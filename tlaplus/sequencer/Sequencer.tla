@@ -22,6 +22,7 @@ Constraint ≜
     ∧ epoch ∈ (1 ‥ MaxEpoch)
     ∧ output ∈ Seq(1 ‥ MaxSeq)
     ∧ diskSeq ∈ 0‥MaxSeq
+    ∧ ¬ ∃s ∈ Servers: states[s].role = PRIMARY ∧ states[s].seq > MaxSeq
 
 Init ≜ 
     ∧ states = [ s ∈ Servers ↦ [ role ↦ SECONDARY ] ]
@@ -31,7 +32,6 @@ Init ≜
 
 GetSeq(s) ≜
     ∧ states[s].role = PRIMARY
-    ∧ states[s].seq < MaxSeq
     ∧ LET nextSeq ≜ states[s].seq
       IN ∧ ∨ output' = Append(output, nextSeq) \* response seq to client
            ∨ UNCHANGED⟨output⟩ \* failed response(e.g. msg loss, timeout, primary restart etc.)
@@ -48,10 +48,9 @@ PrimaryRestart(s) ≜
 
 Elect(s) ≜
     ∧ ∀a ∈ Servers: states[a].role = SECONDARY
-    ∧ epoch' = epoch
-    ∧ diskSeq' = diskSeq + BatchSize
+    ∧ epoch' = epoch + 1
     ∧ states' = [ states EXCEPT ![s] = [ role ↦ PRIMARY, seq ↦  diskSeq + 1 ] ]
-    ∧ UNCHANGED ⟨output⟩
+    ∧ UNCHANGED ⟨output, diskSeq⟩
 
 Next ≜ ∃s ∈ Servers:
     ∨ GetSeq(s)
