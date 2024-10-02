@@ -9,20 +9,25 @@ VARIABLES states, epoch, output, diskSeq
 PRIMARY ≜ "Primary"
 SECONDARY ≜ "Secondary"
 
-ServerState ≜ [ role: { PRIMARY }, seq: (1 ‥ MaxSeq + BatchSize) ]
+ServerState ≜ [ role: { PRIMARY }, seq: Nat ]
             ∪ [ role: { SECONDARY } ]
 
 TypeOK ≜
-    ∧ epoch ∈ (1 ‥ MaxEpoch)
+    ∧ epoch ∈ Nat
     ∧ states ∈ [ Servers → ServerState ]
     ∧ output ∈ Seq(1 ‥ MaxSeq)
-    ∧ diskSeq ∈ 1‥MaxSeq + BatchSize
+    ∧ diskSeq ∈ Nat
+
+Constraint ≜
+    ∧ epoch ∈ (1 ‥ MaxEpoch)
+    ∧ output ∈ Seq(1 ‥ MaxSeq)
+    ∧ diskSeq ∈ 0‥MaxSeq
 
 Init ≜ 
     ∧ states = [ s ∈ Servers ↦ [ role ↦ SECONDARY ] ]
     ∧ epoch = 1
     ∧ output = ⟨⟩
-    ∧ diskSeq = 1
+    ∧ diskSeq = 0
 
 GetSeq(s) ≜
     ∧ states[s].role = PRIMARY
@@ -31,9 +36,9 @@ GetSeq(s) ≜
       IN ∧ ∨ output' = Append(output, nextSeq) \* response seq to client
            ∨ UNCHANGED⟨output⟩ \* failed response(e.g. msg loss, timeout, primary restart etc.)
          ∧ states' = [ states EXCEPT ![s].seq = nextSeq + 1 ]
-         ∧ IF nextSeq - diskSeq < BatchSize
+         ∧ IF nextSeq < diskSeq
            THEN UNCHANGED diskSeq
-           ELSE ∧ diskSeq' = nextSeq
+           ELSE ∧ diskSeq' = nextSeq + BatchSize
     ∧ UNCHANGED epoch
 
 PrimaryRestart(s) ≜
@@ -44,8 +49,9 @@ PrimaryRestart(s) ≜
 Elect(s) ≜
     ∧ ∀a ∈ Servers: states[a].role = SECONDARY
     ∧ epoch' = epoch
-    ∧ states' = [ states EXCEPT ![s] = [ role ↦ PRIMARY, seq ↦ diskSeq + BatchSize ] ]
-    ∧ UNCHANGED ⟨diskSeq, output⟩
+    ∧ diskSeq' = diskSeq + BatchSize
+    ∧ states' = [ states EXCEPT ![s] = [ role ↦ PRIMARY, seq ↦  diskSeq + 1 ] ]
+    ∧ UNCHANGED ⟨output⟩
 
 Next ≜ ∃s ∈ Servers:
     ∨ GetSeq(s)
