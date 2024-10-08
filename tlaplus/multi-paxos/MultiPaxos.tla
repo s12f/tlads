@@ -1,5 +1,5 @@
 -------------------------------- MODULE MultiPaxos -------------------------------
-EXTENDS Integers
+EXTENDS Integers, TLC
 
 CONSTANT Value, Acceptor, Quorum, Ballot, MaxSeq, Proposer, None
 
@@ -10,7 +10,7 @@ ASSUME QuorumAssumption ≜
 LEADER ≜ "Leader"
 CANDIDATE ≜ "Candidate"
 
-Seq ≜ (1‥MaxSeq)
+Seq ≜ (0‥MaxSeq)
 
 \* lss: Last Success Sequence
 ProposerState ≜
@@ -20,28 +20,28 @@ ProposerState ≜
     , nextSeq: Seq
     ]
 
-AcceptorSeqState ≜
-
 AcceptorState ≜
     [ id: Acceptor
-    , seqs: Seq →
-        [ maxBal: Ballot ∪ { None }
-        , maxVBal: Ballot ∪ { None }
-        , maxVal: Ballot ∪ { None }
+    , seqs: [ Seq →
+        [ maxBal: Ballot ∪ { -1 }
+        , maxVBal: Ballot ∪ { -1 }
+        , maxVal: Value ∪ { None }
         , valSrc: Proposer ∪ { None }
-        ]
+        ] ]
     ]
 
-EmptySeqState ≜ [ maxVal ↦ None, maxVBal ↦ None, maxVal ↦ None, valSrc ↦ None ]
+EmptySeqState ≜ [ maxBal ↦ -1, maxVBal ↦ -1, maxVal ↦ None, valSrc ↦ None ]
 
 Msg1a ≜ [ type: {"1a"}, pid: Proposer, seq: Seq, bal : Ballot]
 
 Msg1b ≜ [ type : {"1b"}, pid: Proposer, seq: Seq, acc : Acceptor, bal : Ballot
-        , mbal : Ballot ∪ {-1}, mval : Value ∪ {None} ]
+        , mbal : Ballot ∪ {-1}, mval : Value ∪ {None}, valSrc: Proposer ∪ {None} ]
 
-Msg2a ≜ [ type : {"2a"}, pid: Proposer, seq: Seq, bal: Ballot, val: Value, valSrc: Proposer]
+Msg2a ≜ [ type : {"2a"}, pid: Proposer, seq: Seq, bal: Ballot
+        , val: Value, valSrc: Proposer]
 
-Msg2b ≜ [ type : {"2b"}, pid: Proposer, seq: Seq, acc : Acceptor, bal : Ballot, val : Value, valSrc: Proposer]
+Msg2b ≜ [ type : {"2b"}, pid: Proposer, seq: Seq, acc: Acceptor, bal: Ballot
+        , val: Value, valSrc: Proposer]
 
 Message ≜ Msg1a ∪ Msg1b ∪ Msg2a ∪ Msg2b
 
@@ -68,9 +68,16 @@ Constraint ≜
     ∧ ∀p ∈ Proposer: proposerStates[p].lss < MaxSeq
     ∧ ∀p ∈ Proposer: proposerStates[p].nextSeq < MaxSeq
 
+Symmetry ≜ Permutations(Acceptor)
+    ∪ Permutations(Proposer)
+    \* ∪ Permutations(Quorum)
+    ∪ Permutations(Value)
+
 Init ≜ ∧ msgs = {}
-       ∧ proposerStates = [ p ∈ Proposer ↦ [ id ↦ p, role ↦ CANDIDATE, lss ↦ -1, nextSeq ↦ 0 ] ]
-       ∧ acceptorStates = [ a ∈ Acceptor ↦ [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
+       ∧ proposerStates = [ p ∈ Proposer ↦ 
+            [ id ↦ p, role ↦ CANDIDATE, lss ↦ -1, nextSeq ↦ 0 ] ]
+       ∧ acceptorStates = [ a ∈ Acceptor ↦
+            [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
        ∧ committed = {}
 
 Send(m) ≜ msgs' = msgs ∪ {m}
@@ -82,49 +89,51 @@ LastCommittedSeq ≜ Max({ c.seq: c ∈ committed })
 LearnLastCommitted(p) ≜
     ∧ p.role = CANDIDATE
     ∧ committed ≠ {}
-    ∧ proposerStates' = [ proposerStates EXCEPT ![p].nextSeq = LastCommittedSeq ]
+    ∧ proposerStates' = [ proposerStates EXCEPT ![p.id].nextSeq = LastCommittedSeq ]
         \* ^ p.nextSeq' = LastCommittedSeq
     ∧ UNCHANGED ⟨msgs, acceptorStates, committed⟩
 
 Phase1a(p) ≜ ∃b ∈ Ballot:
     ∧ b > 0
-    ∧ p.role ≜ CANDIDATE
-    ∧ ¬ ∃m ∈ msgs: m.pid = p.id ∧ m.seq = state.nextSeq ∧ m.bal = b
-    ∧ Send([type ↦ "1a", pid ↦ p.id, seq ↦ nextSeq, bal ↦ b])
+    ∧ p.role = CANDIDATE
+    ∧ ¬ ∃m ∈ msgs: m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal = b
+    ∧ Send([type ↦ "1a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
 
 Phase1b(a) ≜ ∃m ∈ msgs:
     ∧ m.type = "1a"
-    ∧ LET state = a.seqs[m.seq]
+    ∧ LET state ≜ a.seqs[m.seq]
       IN ∧ m.bal > state.maxBal
-         ∧ acceptorStates' = [ acceptorStates EXCEPT ![a.id].seqs[m.seq].maxBal = m.bal ]
+         ∧ acceptorStates' = [acceptorStates EXCEPT ![a.id].seqs[m.seq].maxBal = m.bal]
             \* TODO: simplify
          ∧ Send([type ↦ "1b", pid ↦ m.pid, seq ↦ m.seq, acc ↦ a.id, bal ↦ m.bal
-                 , mbal ↦ state.maxBal, mval ↦ state.maxVal])
+                 , mbal ↦ state.maxVBal, mval ↦ state.maxVal, valSrc ↦ state.valSrc])
          ∧ UNCHANGED ⟨committed, proposerStates⟩
 
 Phase2a(p) ≜ ∃b ∈ Ballot, v ∈ Value:
     ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ p.id = m.pid ∧ m.seq = p.nextSeq ∧ m.bal = b
-    ∧ ∃Q ∈ Quorum :
+    ∧ ∃Q ∈ Quorum:
         LET Q1b ≜ {m ∈ msgs : ∧ m.type = "1b"
                               ∧ m.pid = p.id
-                              ∧ m.seq = nextSeq
+                              ∧ m.seq = p.nextSeq
                               ∧ m.acc ∈ Q
                               ∧ m.bal = b }
             Q1bv ≜ {m ∈ Q1b : m.mbal ≥ 0}
-            valSrc ≜ IF Q1bv = {} THEN p.id ELSE m.valSrc
-        IN ∧ ∀ a ∈ Q : ∃ m ∈ Q1b : m.acc = a 
-           ∧ ∨ Q1bv = {}
-             ∨ ∃ m ∈ Q1bv : 
-                   ∧ m.mval = v
-                   ∧ ∀ mm ∈ Q1bv : m.mbal ≥ mm.mbal 
-           ∧ Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b, val ↦ v, valSrc: valSrc])
+        IN ∧ ∀a ∈ Q : ∃m ∈ Q1b : m.acc = a 
+           ∧ IF Q1bv = {}
+               THEN Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b,
+                          val ↦ v, valSrc ↦ p.id])
+               ELSE ∃m ∈ Q1bv: 
+                       ∧ m.mval = v
+                       ∧ ∀ mm ∈ Q1bv : m.mbal ≥ mm.mbal 
+                       ∧ Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b,
+                               val ↦ v, valSrc ↦ m.valSrc])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
 
 FastPhase2a(p) ≜ ∃v ∈ Value:
     ∧ p.role = LEADER
     ∧ p.nextSeq = p.lss + 1
-    ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ m.pid = p.id ∧ m.sed = p.nextSeq ∧ m.bal = 0
+    ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal = 0
     ∧ Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ 0, val ↦ v, valSrc ↦ p.id])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
   
@@ -133,7 +142,8 @@ Phase2b(a) ≜ ∃ m ∈ msgs:
     ∧ m.bal ≥ a.seqs[m.seq].maxBal
     ∧ acceptorStates' = [ acceptorStates EXCEPT ![a.id].seqs[m.seq] =
         [ maxBal ↦ m.bal, maxVBal ↦ m.bal, maxVal ↦ m.val, valSrc ↦ m.valSrc ] ]
-    ∧ Send([type ↦ "2b", pid ↦ m.pid, seq ↦ m.seq, acc ↦ a.id, bal ↦ m.bal, val ↦ m.val, valSrc ↦ m.valSrc]) 
+    ∧ Send([type ↦ "2b", pid ↦ m.pid, seq ↦ m.seq, acc ↦ a.id, bal ↦ m.bal,
+            val ↦ m.val, valSrc ↦ m.valSrc]) 
     ∧ UNCHANGED ⟨committed, proposerStates⟩
 
 \* votes ≜ [a ∈ Acceptor ↦  
@@ -142,7 +152,7 @@ Phase2b(a) ≜ ∃ m ∈ msgs:
 \* 
 \* VotedFor(a, seq, b, v) ≜ ⟨seq, b, v⟩ ∈ votes[a]
 
-Commit(p) ≜ ∃seq ∈ Seq, b ∈ Ballot, v ∈ Value:
+Commit(p) ≜ ∃seq ∈ Seq, b ∈ Ballot, v ∈ Value, valSrc ∈ Proposer:
     ∧ ∃Q ∈ Quorum:
         ∀a ∈ Q: ∃m ∈ msgs:
             ∧ m.type = "2b"
@@ -151,19 +161,21 @@ Commit(p) ≜ ∃seq ∈ Seq, b ∈ Ballot, v ∈ Value:
             ∧ m.acc = a
             ∧ m.bal = b
             ∧ m.val = v
-    ∧ committed' = committed ∪ [ seq ↦ v ]
-    ∧ LET newRole ≜ IF m.valSrc = m.valSrc THEN LEADER ELSE CANDIDATE
-    ∧   IN proposerStates' = [ proposerStates EXCEPT ![p.id] = 
-            [ id ↦ p.pid, role ↦ newRole, lss ↦ seq, nextSeq ↦ seq + 1 ]]
+            ∧ m.valSrc = valSrc
+    ∧ committed' = committed ∪ {[ seq ↦ seq, pid ↦  p.id, val ↦ v]}
+    ∧ LET newRole ≜ IF valSrc = p.id THEN LEADER ELSE CANDIDATE
+        IN proposerStates' = [ proposerStates EXCEPT ![p.id] = 
+            [ id ↦ p.id, role ↦ newRole, lss ↦ seq, nextSeq ↦ seq + 1 ]]
     ∧ UNCHANGED ⟨msgs, acceptorStates⟩
 
-ProposerNext ≜ ∃p ∈ Proposer:
+ProposerNext ≜ ∃pid ∈ Proposer: LET p ≜ proposerStates[pid] IN
     ∨ Phase1a(p)
     ∨ Phase2a(p)
+    ∨ FastPhase2a(p)
     ∨ Commit(p)
     ∨ LearnLastCommitted(p)
 
-AcceptorNext ≜ a ∈ Acceptor:
+AcceptorNext ≜ ∃aid ∈ Acceptor: LET a ≜ acceptorStates[aid] IN
     ∨ Phase1b(a)
     ∨ Phase2b(a)
 
@@ -192,6 +204,6 @@ Inv ≜ ∧ TypeOK
       \*                                                 /\ mm.bal = m.bal
       \*                                                 => mm.val = m.val
       \* ∧ OneValuePerBallot
-      ∧ ∀c1, c2 ∈ DOMAIN committed:
+      ∧ ∀c1, c2 ∈ committed:
             c1.seq = c2.seq ⇒ c1.val = c2.val
 ============================================================================
