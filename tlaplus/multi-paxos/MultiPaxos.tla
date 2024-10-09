@@ -83,21 +83,17 @@ Init ≜ ∧ msgs = {}
             [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
        ∧ committed = {}
 
-Init2 ≜ ∧ msgs = {}
-        ∧ ∃lp ∈ Proposer: proposerStates = [ p ∈ Proposer ↦ 
-            [ id ↦ p, role ↦ IF p = lp THEN LEADER ELSE CANDIDATE, lss ↦ -1, nextSeq ↦ 0 ] ]
-        ∧ acceptorStates = [ a ∈ Acceptor ↦
-            [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
-        ∧ committed = {}
-
 Send(m) ≜ msgs' = msgs ∪ {m}
 
 LastCommittedSeq ≜ Max({ c.seq: c ∈ committed })
 
 LearnLastCommitted(p) ≜
-    ∧ p.role = CANDIDATE
+    \* ∧ p.role = CANDIDATE
     ∧ committed ≠ {}
-    ∧ proposerStates' = [ proposerStates EXCEPT ![p.id].nextSeq = LastCommittedSeq ]
+    ∧ LastCommittedSeq >= p.nextSeq
+    ∧ proposerStates' = [ proposerStates EXCEPT ![p.id] = 
+            [ id ↦ p.id, role ↦ CANDIDATE, lss ↦ p.lss, nextSeq ↦ LastCommittedSeq + 1 ] ]
+    \* ∧ proposerStates' = [ proposerStates EXCEPT ![p.id].role = CANDIDATE ]
         \* ^ p.nextSeq' = LastCommittedSeq
     ∧ UNCHANGED ⟨msgs, acceptorStates, committed⟩
 
@@ -186,7 +182,7 @@ Next ≜
     ∨ ProposerNext
     ∨ AcceptorNext
 
-Spec ≜ Init2 ∧ □[Next]_vars
+Spec ≜ Init ∧ □[Next]_vars
 ----------------------------------------------------------------------------
 
 \* OneValuePerBallot ≜  
