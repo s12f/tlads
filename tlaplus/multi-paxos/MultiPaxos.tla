@@ -1,5 +1,5 @@
 -------------------------------- MODULE MultiPaxos -------------------------------
-EXTENDS Integers, TLC
+EXTENDS Integers, TLC, FiniteSets
 
 CONSTANT Value, Acceptor, Quorum, Ballot, MaxSeq, Proposer, None
 
@@ -11,6 +11,9 @@ LEADER ≜ "Leader"
 CANDIDATE ≜ "Candidate"
 
 Seq ≜ (0‥MaxSeq)
+
+Max(S) ≜ CHOOSE x ∈ S: ∀y ∈ S: x ≥ y
+QS ≜ Cardinality(Acceptor) ÷ 2 + 1
 
 \* lss: Last Success Sequence
 ProposerState ≜
@@ -80,9 +83,14 @@ Init ≜ ∧ msgs = {}
             [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
        ∧ committed = {}
 
-Send(m) ≜ msgs' = msgs ∪ {m}
+Init2 ≜ ∧ msgs = {}
+        ∧ ∃lp ∈ Proposer: proposerStates = [ p ∈ Proposer ↦ 
+            [ id ↦ p, role ↦ IF p = lp THEN LEADER ELSE CANDIDATE, lss ↦ -1, nextSeq ↦ 0 ] ]
+        ∧ acceptorStates = [ a ∈ Acceptor ↦
+            [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
+        ∧ committed = {}
 
-Max(S) ≜ CHOOSE x ∈ S: ∀y ∈ S: x ≥ y
+Send(m) ≜ msgs' = msgs ∪ {m}
 
 LastCommittedSeq ≜ Max({ c.seq: c ∈ committed })
 
@@ -96,7 +104,7 @@ LearnLastCommitted(p) ≜
 Phase1a(p) ≜ ∃b ∈ Ballot:
     ∧ b > 0
     ∧ p.role = CANDIDATE
-    ∧ ¬ ∃m ∈ msgs: m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal = b
+    ∧ ¬ ∃m ∈ msgs: m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal ≥ b
     ∧ Send([type ↦ "1a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
 
@@ -105,35 +113,31 @@ Phase1b(a) ≜ ∃m ∈ msgs:
     ∧ LET state ≜ a.seqs[m.seq]
       IN ∧ m.bal > state.maxBal
          ∧ acceptorStates' = [acceptorStates EXCEPT ![a.id].seqs[m.seq].maxBal = m.bal]
-            \* TODO: simplify
          ∧ Send([type ↦ "1b", pid ↦ m.pid, seq ↦ m.seq, acc ↦ a.id, bal ↦ m.bal
                  , mbal ↦ state.maxVBal, mval ↦ state.maxVal, valSrc ↦ state.valSrc])
          ∧ UNCHANGED ⟨committed, proposerStates⟩
 
-Phase2a(p) ≜ ∃b ∈ Ballot, v ∈ Value:
-    ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ p.id = m.pid ∧ m.seq = p.nextSeq ∧ m.bal = b
-    ∧ ∃Q ∈ Quorum:
-        LET Q1b ≜ {m ∈ msgs : ∧ m.type = "1b"
-                              ∧ m.pid = p.id
-                              ∧ m.seq = p.nextSeq
-                              ∧ m.acc ∈ Q
-                              ∧ m.bal = b }
-            Q1bv ≜ {m ∈ Q1b : m.mbal ≥ 0}
-        IN ∧ ∀a ∈ Q : ∃m ∈ Q1b : m.acc = a 
-           ∧ IF Q1bv = {}
-               THEN Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b,
-                          val ↦ v, valSrc ↦ p.id])
-               ELSE ∃m ∈ Q1bv: 
-                       ∧ m.mval = v
-                       ∧ ∀ mm ∈ Q1bv : m.mbal ≥ mm.mbal 
-                       ∧ Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b,
-                               val ↦ v, valSrc ↦ m.valSrc])
+Phase2a(p) ≜ ∃b ∈ Ballot:
+    ∧ p.role = CANDIDATE
+    ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ p.id = m.pid ∧ m.seq = p.nextSeq ∧ m.bal ≥ b
+    ∧ LET ms ≜ { m ∈ msgs: ∧ m.type = "1b"
+                           ∧ m.pid = p.id
+                           ∧ m.seq = p.nextSeq
+                           ∧ m.bal = b }
+      IN ∧ Cardinality(ms) ≥ QS
+         ∧ ∃m ∈ ms: ∀mm ∈ ms:
+            ∧ m.mbal ≥ mm.mbal
+            ∧ IF m.mbal < 0
+              THEN ∃v ∈ Value: Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b,
+                                     val ↦ v, valSrc ↦ p.id])
+              ELSE Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ b,
+                         val ↦ m.mval, valSrc ↦ m.valSrc])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
 
 FastPhase2a(p) ≜ ∃v ∈ Value:
     ∧ p.role = LEADER
     ∧ p.nextSeq = p.lss + 1
-    ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal = 0
+    ∧ ¬ ∃m ∈ msgs : m.type = "2a" ∧ m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal = 0
     ∧ Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ 0, val ↦ v, valSrc ↦ p.id])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
   
@@ -152,20 +156,19 @@ Phase2b(a) ≜ ∃ m ∈ msgs:
 \* 
 \* VotedFor(a, seq, b, v) ≜ ⟨seq, b, v⟩ ∈ votes[a]
 
-Commit(p) ≜ ∃seq ∈ Seq, b ∈ Ballot, v ∈ Value, valSrc ∈ Proposer:
-    ∧ ∃Q ∈ Quorum:
-        ∀a ∈ Q: ∃m ∈ msgs:
-            ∧ m.type = "2b"
-            ∧ m.pid = p.id
-            ∧ m.seq = seq
-            ∧ m.acc = a
-            ∧ m.bal = b
-            ∧ m.val = v
-            ∧ m.valSrc = valSrc
-    ∧ committed' = committed ∪ {[ seq ↦ seq, pid ↦  p.id, val ↦ v]}
+Commit(p) ≜ ∃b ∈ Ballot, v ∈ Value, valSrc ∈ Proposer:
+    ∧ ∃Q ∈ Quorum: ∀a ∈ Q: ∃m ∈ msgs:
+        ∧ m.type = "2b"
+        ∧ m.pid = p.id
+        ∧ m.seq = p.nextSeq
+        ∧ m.acc = a
+        ∧ m.bal = b
+        ∧ m.val = v
+        ∧ m.valSrc = valSrc
+    ∧ committed' = committed ∪ {[ seq ↦ p.nextSeq, pid ↦  p.id, val ↦ v]}
     ∧ LET newRole ≜ IF valSrc = p.id THEN LEADER ELSE CANDIDATE
         IN proposerStates' = [ proposerStates EXCEPT ![p.id] = 
-            [ id ↦ p.id, role ↦ newRole, lss ↦ seq, nextSeq ↦ seq + 1 ]]
+            [ id ↦ p.id, role ↦ newRole, lss ↦ p.nextSeq, nextSeq ↦ p.nextSeq + 1 ]]
     ∧ UNCHANGED ⟨msgs, acceptorStates⟩
 
 ProposerNext ≜ ∃pid ∈ Proposer: LET p ≜ proposerStates[pid] IN
@@ -183,7 +186,7 @@ Next ≜
     ∨ ProposerNext
     ∨ AcceptorNext
 
-Spec ≜ Init ∧ □[Next]_vars
+Spec ≜ Init2 ∧ □[Next]_vars
 ----------------------------------------------------------------------------
 
 \* OneValuePerBallot ≜  
