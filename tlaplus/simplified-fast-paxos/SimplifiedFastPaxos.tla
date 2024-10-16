@@ -1,14 +1,14 @@
--------------------------------- MODULE Paxos -------------------------------
+-------------------------------- MODULE SimplifiedFastPaxos -----------------
 EXTENDS Integers, TLC, FiniteSets
 
 -----------------------------------------------------------------------------
 
-CONSTANT Value, Acceptor, Quorum, Ballot
+CONSTANT Value, Acceptor, Ballot, None
 
 ASSUME AcceptorSize ≜ Cardinality(Acceptor) ≥ 3
 
 \* Fast Round Quorum, QfS = 3/4N + 1(N is Size of Acceptor)
-Qf ≜ { s ∈ SUBSET(Acceptor): Cardinality(s) = 3 * Cardinality(Acceptor) ÷ 4 + 1 }
+Qf ≜ { s ∈ SUBSET(Acceptor): Cardinality(s) = (3 * Cardinality(Acceptor)) ÷ 4 + 1 }
 
 \* Classic Round Quorum, QcS = N/2 + 1(N is Size of Acceptor)
 Qc ≜ { s ∈ SUBSET(Acceptor): Cardinality(s) = Cardinality(Acceptor) ÷ 2 + 1 }
@@ -19,116 +19,113 @@ Message ≜ [type : {"1a"}, bal : Ballot]
         ∪ [type : {"2a"}, bal : Ballot, val : Value]
         ∪ [type : {"2b"}, acc : Acceptor, bal : Ballot, val : Value]
 
-None ≜ -1
+AState ≜
+    [ id: Acceptor
+    , maxBal: Ballot ∪ {-1}
+    , maxVBal: Ballot ∪ {-1}
+    , maxVal: Value ∪ {None}
+    ]
 
 -----------------------------------------------------------------------------
-VARIABLE maxBal, 
-         maxVBal,   \* <<maxVBal[a], maxVal[a]>> is the vote with the largest
-         maxVal,    \* ballot number cast by a; it equals <<-1, None>> if
-                    \* a has not cast any vote.
-         msgs,      \* The set of all messages that have been sent.
-         committed
 
 
-vars ≜ ⟨maxBal, maxVBal, maxVal, msgs, committed⟩
+\* GroupByKey(S, , rS) ≜ 
 
-TypeOK ≜ ∧ maxBal ∈ [Acceptor → Ballot ∪ {-1}]
-         ∧ maxVBal ∈ [Acceptor → Ballot ∪ {-1}]
-         ∧ maxVal ∈ [Acceptor → Value ∪ {None}]
-         ∧ msgs ⊆ Message
-         ∧ committed ⊆ Value
+-----------------------------------------------------------------------------
+VARIABLE aStates
+VARIABLE msgs
+VARIABLE committed
 
-Init ≜ ∧ maxBal = [a ∈ Acceptor ↦ -1]
-       ∧ maxVBal = [a ∈ Acceptor ↦ -1]
-       ∧ maxVal = [a ∈ Acceptor ↦ None]
-       ∧ msgs = {}
-       ∧ committed = {}
+vars ≜ ⟨aStates, msgs, committed⟩
+
+TypeOK ≜
+    ∧ aStates ∈ [ Acceptor → AState ]
+    ∧ msgs ⊆ Message
+    ∧ committed ⊆ Value
+
+Init ≜ 
+    ∧ aStates = [ a ∈ Acceptor ↦
+        [ id ↦ a, maxBal ↦ -1, maxVBal ↦ -1, maxVal ↦ None]]
+    ∧ msgs = {}
+    ∧ committed = {}
 
 Send(m) ≜ msgs' = msgs ∪ {m}
 
-Phase1a(b) ≜ 
+Phase1a(b) ≜
     ∧ Send([type ↦ "1a", bal ↦ b])
-    ∧ UNCHANGED ⟨maxBal, maxVBal, maxVal, committed⟩
+    ∧ UNCHANGED ⟨aStates, committed⟩
                  
-Phase1b(a) ≜ ∧ ∃ m ∈ msgs : 
-                  ∧ m.type = "1a"
-                  ∧ m.bal > maxBal[a]
-                  ∧ maxBal' = [maxBal EXCEPT ![a] = m.bal]
-                  ∧ Send([type ↦ "1b", acc ↦ a, bal ↦ m.bal, 
-                            mbal ↦ maxVBal[a], mval ↦ maxVal[a]])
-             ∧ UNCHANGED ⟨maxVBal, maxVal, committed⟩
-
-Phase2a(b, v) ≜
-  ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ m.bal = b
-  ∧ ∃ Q ∈ Quorum :
-        LET Q1b ≜ {m ∈ msgs : ∧ m.type = "1b"
-                              ∧ m.acc ∈ Q
-                              ∧ m.bal = b}
-            Q1bv ≜ {m ∈ Q1b : m.mbal ≥ 0}
-        IN  ∧ ∀ a ∈ Q : ∃ m ∈ Q1b : m.acc = a 
-            ∧ ∨ Q1bv = {}
-              ∨ ∃ m ∈ Q1bv : 
-                    ∧ m.mval = v
-                    ∧ ∀ mm ∈ Q1bv : m.mbal ≥ mm.mbal 
-  ∧ Send([type ↦ "2a", bal ↦ b, val ↦ v])
-  ∧ UNCHANGED ⟨maxBal, maxVBal, maxVal, committed⟩
-
-FastPhase2a(v) ≜
-  ∧ ¬ ∃ m ∈ msgs : m.type = "2a" ∧ m.bal = 0
-  ∧ Send([type ↦ "2a", bal ↦ 0, val ↦ v])
-  ∧ UNCHANGED ⟨maxBal, maxVBal, maxVal, committed⟩
-  
-Vote(a, b, v) ≜
-    ∧ maxBal' = [maxBal EXCEPT ![a] = b]
-    ∧ maxVBal' = [maxVBal EXCEPT ![a] = b]
-    ∧ maxVal' = [maxVal EXCEPT ![a] = v]
-    ∧ Send([type ↦ "2b", acc ↦ a, bal ↦ b, val ↦ v]) 
-
-Phase2b(a) ≜ ∃ m ∈ msgs :
-    ∧ m.type = "2a"
-    ∧ m.bal ≥ maxBal[a]
-    ∧ Vote(a, m.bal, m.val)
+Phase1b(aState) ≜ ∃m ∈ msgs: 
+    ∧ m.type = "1a"
+    ∧ m.bal > aState.maxBal
+    ∧ aStates' = [ aStates EXCEPT ![aState.id].maxBal = m.bal ]
+    ∧ Send([type ↦ "1b", acc ↦ aState.id, bal ↦ m.bal, 
+            mbal ↦ aState.maxVBal, mval ↦ aState.maxVal])
     ∧ UNCHANGED ⟨committed⟩
 
-votes ≜ [a ∈ Acceptor ↦  
-           {⟨m.bal, m.val⟩ : m ∈ {mm ∈ msgs: ∧ mm.type = "2b"
-                                             ∧ mm.acc = a }}]
+\* Only For Recovery
+Phase2a(b) ≜
+  ∧ ¬ ∃m ∈ msgs : m.type = "2a" ∧ m.bal = b
+  ∧ LET ms ≜ {m ∈ msgs : ∧ m.type = "1b"
+                           ∧ m.bal = b }
+    IN ∃m ∈ ms:
+        ∧ ∀mm ∈ ms: m.mbal ≥ mm.mbal
+        ∧ m.mbal ≠ -1 \* Ballot 0 is always Fast Round
+        ∧ ∨ ∧ m.mbal > 0 \* Classic Voted Round
+            ∧ ∃Q ∈ Qc: ∀a ∈ Q: ∃mm ∈ ms: mm.acc = a
+            ∧ Send([type ↦ "2a", bal ↦ b, val ↦ m.mval])
+          ∨ ∧ m.mbal = 0 \* Fast Voted Round
+            ∧ ∃Q ∈ Qc: ∀a ∈ Q: ∃mm ∈ ms: mm.acc = a
+            ∧ LET g ≜ [ v ∈ Value ↦  Cardinality({mm ∈ ms: mm.mval = v}) ]
+              IN ∃v ∈ Value:
+                    ∧ ∀vv ∈ Value: g[v] ≥ g[vv]
+                    ∧ Send([type ↦ "2a", bal ↦ b, val ↦ v])
+  ∧ UNCHANGED ⟨aStates, committed⟩
 
-VotedFor(a, b, v) ≜ ⟨b, v⟩ ∈ votes[a]
+FastPhase2a(v) ≜
+  ∧ ¬ ∃ m ∈ msgs: m.type = "2a" ∧ m.bal = 0 ∧ m.val = v
+  ∧ Send([type ↦ "2a", bal ↦ 0, val ↦ v])
+  ∧ UNCHANGED ⟨aStates, committed⟩
+  
+Phase2b(a) ≜ ∃m ∈ msgs:
+    ∧ m.type = "2a"
+    ∧ m.bal ≥ a.maxBal
+    ∧ m.bal > a.maxVBal
+    ∧ aStates' = [ aStates EXCEPT ![a.id] =
+        [ id ↦ a.id, maxBal ↦ m.bal, maxVBal ↦ m.bal, maxVal ↦ m.val] ]
+    ∧ Send([type ↦ "2b", acc ↦ a.id, bal ↦ m.bal, val ↦ m.val]) 
+    ∧ UNCHANGED ⟨committed⟩
 
-Commit(b, v) ≜
-    ∧ ¬ ∃ cv ∈ committed: v = cv
-    ∧ ∃ Q ∈ Quorum :
-        ∀ a ∈ Q: ∃ m ∈ msgs: VotedFor(a, b, v)
+CommitFastRound ≜ ∃v ∈ Value:
+    ∧ v ∉ committed
+    ∧ ∃Q ∈ Qf: ∀a ∈ Q: ∃m ∈ msgs:
+        ∧ m.type = "2b"
+        ∧ m.acc = a
+        ∧ m.bal = 0
+        ∧ m.val = v
     ∧ committed' = committed ∪ {v}
-    ∧ UNCHANGED ⟨maxBal, maxVBal, maxVal, msgs⟩
+    ∧ UNCHANGED ⟨aStates, msgs⟩
 
-Next ≜ ∨ ∃ b ∈ Ballot \ {0} : ∨ Phase1a(b)
-                              ∨ ∃ v ∈ Value : Phase2a(b, v)
-       ∨ ∃ a ∈ Acceptor : Phase1b(a) ∨ Phase2b(a)
-       ∨ ∃ v ∈ Value: FastPhase2a(v)
-       ∨ ∃ b ∈ Ballot, v ∈ Value: Commit(b, v)
+CommitClassicRound ≜ ∃b ∈ Ballot, v ∈ Value:
+    ∧ v ∉ committed
+    ∧ b > 0
+    ∧ ∃Q ∈ Qc: ∀a ∈ Q: ∃m ∈ msgs:
+        ∧ m.type = "2b"
+        ∧ m.acc = a
+        ∧ m.val = v
+        ∧ m.bal = b
+    ∧ committed' = committed ∪ {v}
+    ∧ UNCHANGED ⟨aStates, msgs⟩
+
+Next ≜ ∨ ∃b ∈ Ballot \ {0} : ∨ Phase1a(b)
+                             ∨ Phase2a(b)
+       ∨ ∃a ∈ Acceptor: Phase1b(aStates[a]) ∨ Phase2b(aStates[a])
+       ∨ ∃v ∈ Value: FastPhase2a(v)
+       ∨ CommitFastRound ∨ CommitClassicRound
 
 Spec ≜ Init ∧ □[Next]_vars
 ----------------------------------------------------------------------------
 
-OneValuePerBallot ≜  
-    ∀ a1, a2 ∈ Acceptor, b ∈ Ballot, v1, v2 ∈ Value : 
-       VotedFor(a1, b, v1) ∧ VotedFor(a2, b, v2) ⇒ (v1 = v2)
-
 Inv ≜ ∧ TypeOK
-      ∧ ∀ a ∈ Acceptor : IF maxVBal[a] = -1
-                                THEN maxVal[a] = None
-                                ELSE ⟨maxVBal[a], maxVal[a]⟩ ∈ votes[a]
-       \* /\ \A m \in msgs : 
-       \*       /\ (m.type = "1b") => /\ maxBal[m.acc] \geq m.bal
-       \*                             /\ (m.mbal \geq 0) =>  
-       \*                                 <<m.mbal, m.mval>> \in votes[m.acc]
-       \*       /\ (m.type = "2a") => /\ \E Q \in Quorum : 
-       \*                                   V!ShowsSafeAt(Q, m.bal, m.val)
-       \*                             /\ \A mm \in msgs : /\ mm.type = "2a"
-       \*                                                 /\ mm.bal = m.bal
-       \*                                                 => mm.val = m.val
-      ∧ OneValuePerBallot
       ∧ ∀ v1 ∈ committed, v2 ∈ committed: v1 = v2
 ============================================================================
