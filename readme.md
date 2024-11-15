@@ -1,6 +1,7 @@
 ## TODO
-- [ ] linearizable History
+- [X] linearizable History
 - [ ] linearizable History And Sequence
-- [ ] Batched Multi-Paxos
 - [ ] HLC and Quorum Intersection
-- [ ] Multi-Paxos: Log Completeness And LSS
+- [X] Batched Multi-Paxos
+- [X] Multi-Paxos: Log Completeness And LSS
+- [ ] Distributed Transaction On Sql Databases
