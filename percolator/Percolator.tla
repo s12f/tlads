@@ -1,5 +1,5 @@
 -------------------------------- MODULE Percolator ----------------------------
-EXTENDS Integers, TLC, FiniteSets, Sequence
+EXTENDS Integers, TLC, FiniteSets
 
 -----------------------------------------------------------------------------
 CONSTANT Key, Client
@@ -12,9 +12,10 @@ VARIABLE txs
 
 -----------------------------------------------------------------------------
 \* Utils
-\* MaxUnder_(s, )
-\* 
-\* MaxUnder(s, )
+MaxUnder(s, ts) ≜
+    CHOOSE x ∈ s:
+        ∧ x < ts
+        ∧ ∀y ∈ s: x ≥ y
 
 -----------------------------------------------------------------------------
 \* Transaction
@@ -28,24 +29,24 @@ Start(tx) ≜
     ∧ UNCHANGED ⟨rows⟩
 
 CanRead(k, ts) ≜ 
-    ¬ ∃v ∈ DOMAIN rows[k]:
-        ∧ v < ts
+    ¬ ∃v ∈ DOMAIN rows[k].lock:
+        ∧ v ≤ ts
         ∧ r[v].lock ≠ None
 
-ReadKey(key, ts) ≜
-    LET lt_ts(x) ≜ x < ts
-        SelectSeq(rows[key], )
-    CHOOSE 
+ReadKey(key, ts) ≜ 
+    LET data ≜ rows[key].data
+        max_before_ts ≜ MaxUnder(DOMAIN data, ts)
+    IN data[max_before_ts]
 
 ReadKeys(keys, ts) ≜
     IF ∀k ∈ keys: CanRead(k, ts)
-    THEN [ CHOOSE v ∈  : k ∈ keys ]
+    THEN [ key ∈ keys ↦ ReadKey(key, ts) ]
     ELSE None
 
-Get(tx) ≜
-    ∧ txs[tx].status = "started"
-    \* check whether exists lock
-    ∧ 
+\* Get(tx) ≜
+\*     ∧ txs[tx].status = "started"
+\*     \* check whether exists lock
+\*     ∧ 
 
 -----------------------------------------------------------------------------
 
@@ -53,11 +54,11 @@ Get(tx) ≜
 \*     ∧ oracle ∈ Nat
 
 InitRow ≜
-    ⟨[ data ↦ InitValue
-     , lock ↦ None
-     , write ↦ None
-     ]
-    ⟩
+    [ data ↦ 0 :> InitValue
+    , lock ↦ 0 :> None
+    , write ↦ 0 :> None
+    ]
+    
 
 TxStatus ≜ { "pending", "started", "prewriting", "committing", "committed", "aborted" }
 
