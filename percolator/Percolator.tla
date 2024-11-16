@@ -13,15 +13,19 @@ VARIABLE rows
 VARIABLE txs
 
 -----------------------------------------------------------------------------
+Max(s) ≜ CHOOSE x ∈ s: ∀y ∈ s: x ≥ y
+
 \* Utils
-MaxUnder(s, ts) ≜
-    CHOOSE x ∈ s:
-        ∧ x < ts
-        ∧ ∀y ∈ s: x ≥ y
+MaxUnder(s, ts) ≜ Max({ x ∈ s : x < ts })
 
 \* Delete a key in the Function/Dictionary
 DeleteKey(d, key) ≜
     [ k ∈ DOMAIN d \ {key} ↦ d[k] ]
+
+\* SafeChoose(s) ≜
+\*     IF s = {}
+\*     THEN None
+\*     ELSE CHOOSE x ∈ s: TRUE
 
 -----------------------------------------------------------------------------
 \* Transaction
@@ -32,7 +36,7 @@ Start(tx) ≜
                 ![tx].start_ts = next_ts,
                 ![tx].status = "started",
                 ![tx].read = [ k ∈ TxOp[tx].read ↦ None ]
-            ]
+             ]
     ∧ UNCHANGED ⟨rows⟩
 
 CanRead(k, ts) ≜ 
@@ -43,21 +47,36 @@ ReadKey(key, ts) ≜
         max_before_ts ≜ MaxUnder(DOMAIN data, ts)
     IN data[max_before_ts]
 
+StartPreWrite(tx) ≜ 
+    LET read ≜ txs[tx].read
+        \* Compute All Writes
+        write ≜ TxOp[tx].write[read]
+        write_keys ≜ DOMAIN write
+    IN ∧ IF write_keys = {}
+         \* Read Only Transaction, Commit it directly
+         THEN txs' = [ txs EXCEPT ![tx].status = "committed" ]
+         \* Start PreWrite
+         ELSE txs' = [ txs EXCEPT
+                        ![tx].status = "prewriting",
+                        ![tx].write = write,
+                        ![tx].primary = CHOOSE w ∈ write_keys: TRUE,
+                        ![tx].pending_write = write_keys,
+                        ![tx].pending_commit = write_keys ]
+       ∧ UNCHANGED ⟨rows, next_ts⟩
+
 Get(tx) ≜
     ∧ txs[tx].status = "started"
-    \* check whether exists lock
-    ∧ ∀k ∈ TxOp.read: CanRead(k, txs[tx].start_ts)
-    ∧ LET read ≜ [ key ∈ TxOp.read ↦ ReadKey(key, txs[tx].start_ts) ]
-          write ≜ TxOp[tx].write[read]
-          primary ≜ CHOOSE w ∈ DOMAIN write: TRUE
-      IN ∧ txs' = [ txs EXCEPT
-                    ![tx].status = "prewriting",
-                    ![tx].read = read,
-                    ![tx].write = write,
-                    ![tx].primary = primary,
-                    ![tx].pending_write = DOMAIN write,
-                    ![tx].pending_commit = DOMAIN write ]
-         ∧ UNCHANGED ⟨rows, next_ts⟩
+    ∧ LET ts ≜ txs[tx].start_ts
+          read ≜ txs[tx].read
+          pending_read ≜ { k ∈ DOMAIN read: read[k] = None }
+      IN IF pending_read = {}
+         THEN StartPreWrite(tx)
+         ELSE ∃k ∈ pending_read:
+                \* check whether exists lock
+                ∧ CanRead(k, ts)
+                ∧ txs' = [ txs EXCEPT
+                            ![tx].read = k :> ReadKey(k, txs[tx].start_ts) @@ @ ]
+                ∧ UNCHANGED ⟨next_ts, rows⟩
 
 CanLock(row, ts) ≜
     ∧ ¬ ∃v ∈ DOMAIN row.write: v > ts
@@ -116,6 +135,7 @@ CommitSecondaries(tx) ≜
           commit_ts ≜ txs[tx].commit_ts
       IN ∧ ∀key ∈ txs[tx].pending_commit: CommitKey(key, start_ts, commit_ts)
          ∧ txs' = [ txs EXCEPT ![tx].pending_commit = {} ]
+    ∧ UNCHANGED ⟨next_ts⟩
 
 Commit(tx) ≜
     ∧ txs[tx].status = "committing"
@@ -126,12 +146,34 @@ Commit(tx) ≜
          THEN CommitPrimary(tx, primary, start_ts, commit_ts)
          ELSE Abort(tx)
 
+Unlock(k, ts) ≜
+    ∧ rows' = [ rows EXCEPT
+                ![k].data = DeleteKey(@, ts),
+                ![k].lock = DeleteKey(@, ts) ]
+
+Recover ≜ ∃k ∈ Key:
+    ∧ rows[k].lock ≠ ⟨⟩
+    ∧ LET start_ts ≜ CHOOSE l ∈ DOMAIN rows[k].lock: TRUE
+          primary ≜ rows[k].lock[start_ts]
+          cts ≜ { v ∈ DOMAIN rows[primary].write : rows[primary].write[v] = start_ts }
+      IN IF start_ts ∈ DOMAIN rows[primary].lock
+         \* Unlock primary row first
+         THEN Unlock(primary, start_ts)
+         ELSE IF cts = {}
+              THEN Unlock(k, start_ts)
+              ELSE ∃commit_ts ∈ cts: CommitKey(k, start_ts, commit_ts)
+    ∧ UNCHANGED ⟨next_ts, txs⟩
+
+Done ≜
+    ∧ ∀tx ∈ Tx: txs[tx].status ∈ { "committed", "aborted" }
+    ∧ UNCHANGED ⟨next_ts, rows, txs⟩
+
 -----------------------------------------------------------------------------
 
 InitRow ≜
     [ data ↦ 0 :> InitValue
     , lock ↦ ⟨⟩
-    , write ↦ ⟨⟩
+    , write ↦ 1 :> 0
     ]
 
 TxStatus ≜ { "pending", "started", "prewriting", "committing", "committed", "aborted" }
@@ -140,28 +182,37 @@ InitTx ≜
     [ status ↦ "pending"
     , start_ts ↦ None
     , commit_ts ↦ None
-    , read ↦ None
-    , write ↦ None
+    , read ↦ ⟨⟩
+    , write ↦ ⟨⟩
     , primary ↦ None
-    , pending_write ↦ None
-    , pending_commit ↦ None
+    , pending_write ↦ {}
+    , pending_commit ↦ {}
     ]
 
 Init ≜
-    ∧ PrintT(Key)
-    ∧ next_ts = 1
+    ∧ next_ts = 2
     ∧ rows = [ k ∈ Key ↦ InitRow ]
     ∧ txs = [ tx ∈ Tx ↦ InitTx ]
 
-Next ≜ ∃tx ∈ Tx:
-    ∧ Start(tx)
-    ∧ Get(tx)
-    ∧ PreWrite(tx)
-    ∧ Commit(tx)
+ClientAction ≜ ∃tx ∈ Tx:
+    ∨ Start(tx)
+    ∨ Get(tx)
+    ∨ PreWrite(tx)
+    ∨ Commit(tx)
+    ∨ CommitSecondaries(tx)
+
+Next ≜
+    ∨ ClientAction
+    ∨ Recover
+    ∨ Done
 
 Spec ≜ Init ∧ □[Next]_⟨next_ts, rows, txs⟩
 
-Inv ≜ TRUE
+TypeOK ≜
+    ∧ next_ts ∈ Nat
+    ∧ ∀tx ∈ Tx: txs[tx].status ∈ TxStatus
+
+Inv ≜ TypeOK
 
 \* Inv ≜
 \*     ∧ Atomicity

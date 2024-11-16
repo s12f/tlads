@@ -1,4 +1,4 @@
--------------------------------- MODULE Transfer ----------------------------
+-------------------------------- MODULE PhantomP3 ----------------------------
 EXTENDS Integers, TLC, FiniteSets
 
 -----------------------------------------------------------------------------
@@ -8,9 +8,10 @@ VARIABLE next_ts
 VARIABLE rows
 VARIABLE txs
 
-Key ≜ {"k1", "k2", "k3"}
-InitValue ≜ 10
+Key ≜ {"k1", "k2"}
 Tx ≜ {"t1", "t2"}
+InitValue ≜ 10
+
 TransferWrite(read) ≜ 
     LET read_keys ≜ DOMAIN read
         s ≜ CHOOSE k ∈ read_keys: TRUE
@@ -22,19 +23,21 @@ TransferTx(keys) ≜
     , write ↦ [ read ∈ [keys → 8‥12] ↦ TransferWrite(read)]
     ]
 
+ReadOnlyTx(keys) ≜ 
+    [ read ↦ keys
+    , write ↦ [ read ∈ [keys → 8‥12] ↦ ⟨⟩]
+    ]
+
 TxOp ≜
     [ t1 ↦ TransferTx({"k1", "k2"})
-    , t2 ↦ TransferTx({"k2", "k3"})
+    , t2 ↦ ReadOnlyTx({"k1", "k2"})
     ]
 
 INSTANCE Percolator
 
-AtomicRead ≜
-    ∨ ∃k ∈ Key: ¬ CanRead(k, next_ts)
-    ∨ 30 = ReadKey("k1", next_ts)
-            + ReadKey("k2", next_ts)
-            + ReadKey("k3", next_ts)
-
-TransferInv ≜ Inv ∧ AtomicRead
+PhantomP3Inv ≜
+    ∨ txs["t2"].status ≠ "committed"
+    ∨ LET r ≜ txs["t2"].read
+      IN 20 = r["k1"] + r["k2"]
 
 ============================================================================
