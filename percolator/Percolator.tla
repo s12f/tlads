@@ -2,9 +2,11 @@
 EXTENDS Integers, TLC, FiniteSets
 
 -----------------------------------------------------------------------------
-CONSTANT Key, Client
+CONSTANT Key
 CONSTANT None
-CONSTANT InitValue, Tx, TxOp
+CONSTANT InitValue
+CONSTANT Tx
+CONSTANT TxOp
 
 VARIABLE next_ts
 VARIABLE rows
@@ -19,40 +21,34 @@ MaxUnder(s, ts) ≜
 
 \* Delete a key in the Function/Dictionary
 DeleteKey(d, key) ≜
-    [ \k ∈ DOMAIN d \ {key} ↦ d[k] ]
+    [ k ∈ DOMAIN d \ {key} ↦ d[k] ]
 
 -----------------------------------------------------------------------------
 \* Transaction
 Start(tx) ≜
     ∧ txs[tx].status = "pending"
-    ∧ next_ts' = next_ts
+    ∧ next_ts' = next_ts + 1
     ∧ txs' = [ txs EXCEPT
-        ![tx].start_ts = next_ts + 1,
-        ![tx].status = "started"
-        ![tx].read = [ k ∈ TxOp[tx].keys ↦ None ] ]
+                ![tx].start_ts = next_ts,
+                ![tx].status = "started",
+                ![tx].read = [ k ∈ TxOp[tx].read ↦ None ]
+            ]
     ∧ UNCHANGED ⟨rows⟩
 
 CanRead(k, ts) ≜ 
-    ¬ ∃v ∈ DOMAIN rows[k].lock:
-        ∧ v ≤ ts
-        ∧ r[v].lock ≠ None
+    ¬ ∃v ∈ DOMAIN rows[k].lock: v < ts
 
 ReadKey(key, ts) ≜ 
     LET data ≜ rows[key].data
         max_before_ts ≜ MaxUnder(DOMAIN data, ts)
     IN data[max_before_ts]
 
-ReadKeys(keys, ts) ≜
-    IF ∀k ∈ keys: CanRead(k, ts)
-    THEN [ key ∈ keys ↦ ReadKey(key, ts) ]
-    ELSE None
-
 Get(tx) ≜
     ∧ txs[tx].status = "started"
     \* check whether exists lock
-    ∧ ∀k ∈ keys: CanRead(k, ts)
-    ∧ LET read ≜ ReadKeys(keys, ts)
-          write ≜ TxOp[tx].write(read)
+    ∧ ∀k ∈ TxOp.read: CanRead(k, txs[tx].start_ts)
+    ∧ LET read ≜ [ key ∈ TxOp.read ↦ ReadKey(key, txs[tx].start_ts) ]
+          write ≜ TxOp[tx].write[read]
           primary ≜ CHOOSE w ∈ DOMAIN write: TRUE
       IN ∧ txs' = [ txs EXCEPT
                     ![tx].status = "prewriting",
@@ -60,13 +56,12 @@ Get(tx) ≜
                     ![tx].write = write,
                     ![tx].primary = primary,
                     ![tx].pending_write = DOMAIN write,
-                    ![tx].pending_commit = DOMAIN  write,
-                ]
+                    ![tx].pending_commit = DOMAIN write ]
          ∧ UNCHANGED ⟨rows, next_ts⟩
 
 CanLock(row, ts) ≜
     ∧ ¬ ∃v ∈ DOMAIN row.write: v > ts
-    ∧ ¬ ∃v ∈ DOMAIN row.lock: row.lock[v] ≠ None
+    ∧ DOMAIN row.lock = {}
 
 Lock(tx, key, data, primary, ts) ≜ 
     ∧ rows' = [ rows EXCEPT
@@ -95,15 +90,15 @@ PreWrite(tx) ≜
                data ≜ txs[tx].write[key]
                primary ≜ txs[tx].primary
                ts ≜ txs[tx].start_ts
-           IN IF CanLock(rows[key], start_ts)
+           IN IF CanLock(rows[key], ts)
               THEN Lock(tx, key, data, primary, ts)
               ELSE Abort(tx)
 
-LockIsValid(key, ts) ≜ rows[key].lock[start_ts] ≠ None
+LockIsValid(key, ts) ≜ ts ∈ DOMAIN rows[key].lock
 
 CommitKey(key, start_ts, commit_ts) ≜
     ∧ rows' = [ rows EXCEPT 
-               ![key].write = @ @@ commit_ts :> start_ts
+               ![key].write = @ @@ commit_ts :> start_ts,
                ![key].lock = DeleteKey(@, start_ts) ]
 
 CommitPrimary(tx, primary, start_ts, commit_ts) ≜
@@ -138,7 +133,6 @@ InitRow ≜
     , lock ↦ ⟨⟩
     , write ↦ ⟨⟩
     ]
-    
 
 TxStatus ≜ { "pending", "started", "prewriting", "committing", "committed", "aborted" }
 
@@ -154,26 +148,30 @@ InitTx ≜
     ]
 
 Init ≜
+    ∧ PrintT(Key)
     ∧ next_ts = 1
     ∧ rows = [ k ∈ Key ↦ InitRow ]
-    ∧ ts = [ c ∈ Client ↦ InitTx ]
+    ∧ txs = [ tx ∈ Tx ↦ InitTx ]
 
-Next ≜ ∃tx ∈ Tx,
+Next ≜ ∃tx ∈ Tx:
     ∧ Start(tx)
     ∧ Get(tx)
     ∧ PreWrite(tx)
     ∧ Commit(tx)
 
-Inv ≜
-    ∧ TypeOK
-    ∧ Atomicity
-    \* write Consistency
-    \* read Consistency
-    ∧ Consistency
-    ∧ TxConsistency
-    ∧ SnapshotIsolation
-    ∧ ReadCommitted
-    \* crash after committing
-    ∧ Durability
+Spec ≜ Init ∧ □[Next]_⟨next_ts, rows, txs⟩
+
+Inv ≜ TRUE
+
+\* Inv ≜
+\*     ∧ Atomicity
+\*     \* write Consistency
+\*     \* read Consistency
+\*     ∧ Consistency
+\*     ∧ TxConsistency
+\*     ∧ SnapshotIsolation
+\*     ∧ ReadCommitted
+\*     \* crash after committing
+\*     ∧ Durability
 
 ============================================================================
