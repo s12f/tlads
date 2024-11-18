@@ -2,19 +2,20 @@
 EXTENDS Integers, TLC, FiniteSets
 
 -----------------------------------------------------------------------------
-
 CONSTANT Value, Acceptor, Ballot, None
 
 ASSUME AcceptorSize ≜ Cardinality(Acceptor) ≥ 3
 
 Qc ≜ { s ∈ SUBSET(Acceptor): Cardinality(s) = Cardinality(Acceptor) ÷ 2 + 1 }
       
+\* Message Type(Set)
 Message ≜ [type : {"1a"}, bal : Ballot]
         ∪ [type : {"1b"}, acc : Acceptor, bal : Ballot, 
               mbal : Ballot ∪ {-1}, mval : Value ∪ {None}]
         ∪ [type : {"2a"}, bal : Ballot, val : Value]
         ∪ [type : {"2b"}, acc : Acceptor, bal : Ballot, val : Value]
 
+\* Acceptor State
 AState ≜
     [ id: Acceptor
     , maxBal: Ballot ∪ {-1}
@@ -23,13 +24,15 @@ AState ≜
     ]
 
 -----------------------------------------------------------------------------
-
+\* Utils
 MaxBy(S, n) ≜ CHOOSE x ∈ S: ∀xx ∈ S: x[n] ≥ xx[n]
 
 -----------------------------------------------------------------------------
 
+\* Acceptor → AState
 VARIABLE aStates
 VARIABLE msgs
+\* all committed values
 VARIABLE committed
 
 vars ≜ ⟨aStates, msgs, committed⟩
@@ -50,7 +53,7 @@ Send(m) ≜ msgs' = msgs ∪ {m}
 Phase1a(b) ≜
     ∧ Send([type ↦ "1a", bal ↦ b])
     ∧ UNCHANGED ⟨aStates, committed⟩
-                 
+
 Phase1b(aState) ≜ ∃m ∈ msgs: 
     ∧ m.type = "1a"
     ∧ m.bal > aState.maxBal
