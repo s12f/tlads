@@ -4,11 +4,11 @@
 
 | Project | Description |
 | --- |  --- |
-| [paxos-eb0](paxos-eb0/) | A Basic Paxos with excluded ballot 0 optimization |
-| [multi-paxos-eb0](multi-paxos-eb0/) | A Multi-Paxos implement composed by paxos-eb0 instances |
-| [percolator](percolator/) | the Google's Distributed Transaction Algorithm built on Bigtable |
-| [sequencer](sequencer/) | A Distributed sequence generator |
-| [simplified-fast-paxos](simplified-fast-paxos/) | a simplified fast paxos implement |
+| [paxos-eb0](paxos-eb0/) | A Basic Paxos with Excluded Ballot 0 Optimization |
+| [multi-paxos-eb0](multi-paxos-eb0/) | A Multi-Paxos Implement Composed by paxos-eb0 Instances |
+| [percolator](percolator/) | The Google's Distributed Transaction Algorithm Built on Bigtable |
+| [sequencer](sequencer/) | A Distributed Sequence Generator |
+| [simplified-fast-paxos](simplified-fast-paxos/) | A Simplified Fast Paxos Implement |
 
 ## TODO
 - [ ] linearizable History
