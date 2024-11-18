@@ -11,11 +11,9 @@
 | [simplified-fast-paxos](simplified-fast-paxos/) | A simplified Fast Paxos implement |
 
 ## TODO
-- [ ] linearizable History
-- [ ] Improve Sequencer: linearizable Point
-- [ ] Multi-Paxos:
-    - [ ] Batching
-    - [ ] Log Completeness
+
+What's Next:
+
 - [ ] HLC and Quorum Intersection
 - [ ] Distributed Transaction On Sql Databases
 - [ ] Modeling Transaction Isolation Levels
