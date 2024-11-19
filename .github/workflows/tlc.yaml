@@ -37,4 +37,4 @@ jobs:
           wget https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar
       - name: model checking
         run: |
-          java -cp tla2tools.java tlc2.TLC ${{ matrix.file }}
+          java -cp tla2tools.jar tlc2.TLC ${{ matrix.file }}
