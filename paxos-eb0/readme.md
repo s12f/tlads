@@ -18,7 +18,7 @@ to commit a value:
 * Phase2: recover the voted value or issue a new value if not found any voted value.
 
 But in practice, two-round trip to commit a value is quite expensive,
-for an example, raft[https://raft.github.io/raft.pdf] or some other multi-paxos implements,
+for an example, [raft](https://raft.github.io/raft.pdf) or some other multi-paxos implements,
 in normal case, committing a value only need one-round trip.
 
 ## Paxos with excluded ballot 0 optimization
