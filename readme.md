@@ -1,6 +1,6 @@
 # tlads
 
-Design and verify some old or new ideas of distributed/discrete systems using TLA+.
+Design and verify some old or new concepts/models/algorithms/ideas of distributed/discrete systems using TLA+.
 
 ## Projects
 
@@ -16,6 +16,6 @@ Design and verify some old or new ideas of distributed/discrete systems using TL
 
 What's Next:
 
-- [ ] HLC and Quorum Intersection
-- [ ] Distributed Transaction On Sql Databases
 - [ ] Modeling Transaction Isolation Levels
+- [ ] Distributed Transaction On Sql Databases
+- [ ] HLC and Quorum Intersection

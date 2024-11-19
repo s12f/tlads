@@ -9,8 +9,8 @@ is a very important paper(s) that inspires many future leaderless(multi-leader) 
 
 This project simplifies the origin Fast Paxos to make it more easily and practically to implement:
 
-1. Remove the Empty value
-2. Clients can't issue value to acceptors directly
+1. Remove the *any* value
+2. Clients can't issue values to acceptors directly
 3. Clients always send requests to proposers
 4. Ballot 0 is the only fast round, all other ballots are classic round
 

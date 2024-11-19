@@ -185,24 +185,7 @@ Next ≜
 Spec ≜ Init ∧ □[Next]_vars
 ----------------------------------------------------------------------------
 
-\* OneValuePerBallot ≜  
-\*     ∀ a1, a2 ∈ Acceptor, b ∈ Ballot, v1, v2 ∈ Value: 
-\*        VotedFor(a1, b, v1) ∧ VotedFor(a2, b, v2) ⇒ (v1 = v2)
-
 Inv ≜ ∧ TypeOK
-      \* ∧ ∀ a ∈ Acceptor : IF maxVBal[a] = -1
-      \*                           THEN maxVal[a] = None
-      \*                           ELSE ⟨maxVBal[a], maxVal[a]⟩ ∈ votes[a]
-      \* /\ \A m \in msgs : 
-      \*       /\ (m.type = "1b") => /\ maxBal[m.acc] \geq m.bal
-      \*                             /\ (m.mbal \geq 0) =>  
-      \*                                 <<m.mbal, m.mval>> \in votes[m.acc]
-      \*       /\ (m.type = "2a") => /\ \E Q \in Quorum : 
-      \*                                   V!ShowsSafeAt(Q, m.bal, m.val)
-      \*                             /\ \A mm \in msgs : /\ mm.type = "2a"
-      \*                                                 /\ mm.bal = m.bal
-      \*                                                 => mm.val = m.val
-      \* ∧ OneValuePerBallot
       ∧ ∀c1, c2 ∈ committed:
             c1.seq = c2.seq ⇒ c1.val = c2.val
 ============================================================================
