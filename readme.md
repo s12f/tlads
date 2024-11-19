@@ -16,7 +16,8 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
 
 What's Next:
 
-- [ ] Github CI
+- [x] Github CI
+- [ ] Separate model from specification
 - [ ] Modeling Transaction Isolation Levels
 - [ ] Distributed Transaction On Sql Databases
 - [ ] HLC and Quorum Intersection
