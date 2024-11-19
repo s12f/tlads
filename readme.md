@@ -16,6 +16,7 @@ Design and verify some old or new concepts/models/algorithms/ideas of distribute
 
 What's Next:
 
+- [ ] Github CI
 - [ ] Modeling Transaction Isolation Levels
 - [ ] Distributed Transaction On Sql Databases
 - [ ] HLC and Quorum Intersection
