@@ -24,6 +24,7 @@ jobs:
           - multi-paxos-eb0/MultiPaxos.tla
           - paxos-eb0/PaxosEb0.tla
           - percolator/Transfer.tla
+          - percolator/SnapshotRead.tla
           - sequencer/Sequencer.tla
           - simplified-fast-paxos/SimplifiedFastPaxos.tla
     steps:
