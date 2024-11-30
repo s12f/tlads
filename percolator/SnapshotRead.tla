@@ -1,4 +1,4 @@
--------------------------------- MODULE PhantomP3 ----------------------------
+-------------------------------- MODULE SnapshotRead ----------------------------
 EXTENDS Integers, TLC, FiniteSets
 
 -----------------------------------------------------------------------------
@@ -35,7 +35,7 @@ TxOp ≜
 
 INSTANCE Percolator
 
-PhantomP3Inv ≜
+SnapshotReadInv ≜
     ∨ txs["t2"].status ≠ "committed"
     ∨ LET r ≜ txs["t2"].read
       IN 20 = r["k1"] + r["k2"]

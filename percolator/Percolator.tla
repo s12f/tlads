@@ -44,8 +44,9 @@ CanRead(k, ts) ≜
 
 ReadKey(key, ts) ≜ 
     LET data ≜ rows[key].data
-        max_before_ts ≜ MaxUnder(DOMAIN data, ts)
-    IN data[max_before_ts]
+        write ≜ rows[key].write
+        max_before_ts ≜ MaxUnder(DOMAIN write, ts)
+    IN data[write[max_before_ts]]
 
 StartPreWrite(tx) ≜ 
     LET read ≜ txs[tx].read
