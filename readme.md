@@ -19,5 +19,6 @@ What's Next:
 - [x] Github CI
 - [ ] Separate model from specification
 - [ ] Modeling Transaction Isolation Levels
+- [ ] Add Liveness Invariants
 - [ ] Distributed Transaction On Sql Databases
 - [ ] HLC and Quorum Intersection
