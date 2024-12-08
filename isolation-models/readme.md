@@ -11,8 +11,8 @@ There are different isolation models to specify the database transaction levels:
 ## SIB
 
 [SIB_ISOLATION.tla](./SIB_ISOLATION.tla) is the specification of SIB isolation model,
-you can use the IsolationExecution-related(e.g. SerializableIsolation) operations to verify a transaction execution(included an init state and a transaction sequence),
-or use the Isolation-related operations to verify an init state and a set of finished transaction(committed or abort),
+you can use the IsolationExecution-related(e.g. SerializableExecution) operations to verify a transaction execution(included an init state and a transaction sequence),
+or use the Isolation-related operations(e.g. SerializableIsolation) to verify an init state and a set of finished transaction(committed or abort),
 there is an example to verify that the Snapshot Isolation allows the Write Skew anomaly, but the Serializable Isolation Doesn't:
 ```tla
 init ≜ [ k1 ↦ 0, k2 ↦ 0, k3 ↦ 0 ]
@@ -27,6 +27,12 @@ SI ≜ INSTANCE SIB_ISOLATION
 ASSUME SI!SnapshotIsolation(init, txs)
 ASSUME ¬ SI!SerializableIsolation(init, txs)
 ```
+
+### TODO
+
+- Parallel Snapshot Isolation
+- Strict Serializability
+- Read Atomic
 
 ## ANSI
 
