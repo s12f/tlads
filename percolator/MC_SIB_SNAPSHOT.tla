@@ -40,8 +40,7 @@ AllTxsDone ≜ ∀tx ∈ Tx: txs[tx].status ∈ { "committed", "aborted" }
 SnapshotInv ≜ AllTxsDone ⇒
     ∧ SI!SnapshotIsolation(InitState, MappedTxs)
     ∧ SI!ReadCommittedIsolation(InitState, MappedTxs)
-    \* SerializableIsolation Will failed,
-    \* Because exists write skew executions
+    \* SerializableIsolation will fail, Because exists write skew executions
     \* ∧ SI!SerializableIsolation(InitState, MappedTxs)
 
 ============================================================================
