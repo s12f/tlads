@@ -11,6 +11,7 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
 | [percolator](percolator/)                       | The Google's distributed transaction algorithm built on Bigtable      |
 | [sequencer](sequencer/)                         | A distributed sequence generator                                      |
 | [simplified-fast-paxos](simplified-fast-paxos/) | A simplified Fast Paxos implement                                     |
+| [isolation-models](isolation-models/)           | Transaction Isolation Models                                          |
 
 ## TODO
 
@@ -18,6 +19,8 @@ What's Next:
 
 - [x] Github CI
 - [ ] Separate model from specification
-- [ ] Modeling Transaction Isolation Levels
+- [ ] Consider Removing Unicode
+- [X] Modeling Transaction Isolation Levels
+- [ ] Add Liveness Invariants
 - [ ] Distributed Transaction On Sql Databases
 - [ ] HLC and Quorum Intersection

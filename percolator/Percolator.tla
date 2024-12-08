@@ -215,15 +215,4 @@ TypeOK ≜
 
 Inv ≜ TypeOK
 
-\* Inv ≜
-\*     ∧ Atomicity
-\*     \* write Consistency
-\*     \* read Consistency
-\*     ∧ Consistency
-\*     ∧ TxConsistency
-\*     ∧ SnapshotIsolation
-\*     ∧ ReadCommitted
-\*     \* crash after committing
-\*     ∧ Durability
-
 ============================================================================
