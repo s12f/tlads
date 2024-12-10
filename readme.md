@@ -17,10 +17,25 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
 
 What's Next:
 
-- [x] Github CI
+- [X] Github CI
 - [ ] Separate model from specification
-- [ ] Consider Removing Unicode
 - [X] Modeling Transaction Isolation Levels
 - [ ] Add Liveness Invariants
 - [ ] Distributed Transaction On Sql Databases
 - [ ] HLC and Quorum Intersection
+
+## Q & A
+
+#### Why are the TLA+ files unicode-based?
+
+In short, Unicode-based has better readability rather than plain ASCII.
+
+In the plain ASCII, many other projects will generate a styled pdf with the
+TLA+ files for readability, there are some disadvantages:
++ pdf files don't work well with git
++ (pdf)Latex dependency
++ more efforts to sync the TLA+ files and pdf files
+
+#### How do I input the unicode symbols?
+
+Please read: https://github.com/tlaplus/tlaplus-standard/tree/main/unicode
