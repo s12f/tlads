@@ -1,6 +1,6 @@
 # Transaction Isolation Models
 
-There are different isolation models to specify the database transaction levels:
+There are different isolation models to specify the database transaction isolation levels:
 
 + ANSI: ANSI/ISO SQL-92 and [A Critique of ANSI SQL Isolation Levels](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-95-51.pdf)
 + ADYA:
@@ -10,10 +10,14 @@ There are different isolation models to specify the database transaction levels:
 
 ## SIB
 
-[SIB_ISOLATION.tla](./SIB_ISOLATION.tla) is the specification of SIB isolation model,
-you can use the IsolationExecution-related(e.g. SerializableExecution) operations to verify a transaction execution(included an init state and a transaction sequence),
-or use the Isolation-related operations(e.g. SerializableIsolation) to verify an init state and a set of finished transaction(committed or abort),
-there is an example to verify that the Snapshot Isolation allows the Write Skew anomaly, but the Serializable Isolation Doesn't:
+[SIB_ISOLATION.tla](./SIB_ISOLATION.tla) is the specification of SIB isolation
+model, you can use the IsolationExecution-related(e.g. SerializableExecution)
+operations to verify a transaction execution(included an init state and a
+transaction sequence), or use the Isolation-related operations(e.g.
+SerializableIsolation) to verify an init state and a set of finished
+transaction(committed or abort), there is an example to verify that the
+Snapshot Isolation allows the Write Skew anomaly, but the Serializable
+Isolation Doesn't:
 ```tla
 init ≜ [ k1 ↦ 0, k2 ↦ 0, k3 ↦ 0 ]
 
