@@ -26,7 +26,7 @@ jobs:
           - percolator/Transfer.tla
           - percolator/SnapshotRead.tla
           - percolator/MC_SIB_SNAPSHOT.tla
-          - sequencer/Sequencer.tla
+          - sequencer/MCSequencer.tla
           - simplified-fast-paxos/SimplifiedFastPaxos.tla
           - isolation-models/ALL_TESTS.tla
     steps:
