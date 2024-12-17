@@ -14,7 +14,7 @@ EXTENDS Integers, Sequences, TLC, FiniteSets
 *)
 SetToSeqs(S) ≜
   LET D ≜ 1 ‥ Cardinality(S)
-  IN { f ∈ [D -> S]: ∀ i,j ∈ D: i ≠ j => f[i] ≠ f[j] }
+  IN { f ∈ [D → S]: ∀ i,j ∈ D: i ≠ j ⇒ f[i] ≠ f[j] }
 
 ----------------------------------------------------
 \* States
@@ -53,7 +53,7 @@ ComputeStates(txs, states, idx) ≜
  from. These two conditions suffice to guarantee that T will observe the effects
  of all transactions that committed before it.
 *)
-SER_CT(tx, states) ≜ ∀k ∈ DOMAIN tx.read: tx.read[k] = states[Len(states)][k]
+SER_CT(e, tx, states) ≜ ∀k ∈ DOMAIN tx.read: tx.read[k] = states[Len(states)][k]
 
 (* Snapshot Isolation Commit Test:
  Like serializability, SI prevents transaction T from seeing the effects of
@@ -65,7 +65,7 @@ SER_CT(tx, states) ≜ ∀k ∈ DOMAIN tx.read: tx.read[k] = states[Len(states)]
  test only forbids T from modifying any of the keys that changed value as the
  system’s state progressed from s to sp.
  *)
-SI_CT(tx, states) ≜
+SI_CT(e, tx, states) ≜
     ∃idx ∈ DOMAIN states:
         ∧ ∀k ∈ DOMAIN tx.read: tx.read[k] = states[idx][k]
         \* NO-CONF
@@ -78,7 +78,7 @@ SI_CT(tx, states) ≜
  operations in T to read from the same state; instead, it only requires each of
  them to read from a state that precedes T in the execution e.
  *)
-RC_CT(tx, states) ≜
+RC_CT(e, tx, states) ≜
     ∀k ∈ DOMAIN tx.read:
         ∃idx ∈ DOMAIN states:
             tx.read[k] = states[idx][k]
@@ -89,32 +89,40 @@ RC_CT(tx, states) ≜
  permissiveness, to the point of allowing transactions to read arbitrary
  values.
  *)
-RU_CT(tx, states) ≜ TRUE
+RU_CT(e, tx, states) ≜ TRUE
+
+\* Timestamps
+TxLess(tx1, tx2) ≜ tx1.commitTs < tx2.startTs
+
+SSER_CT(e, tx, states) ≜
+    ∧ SER_CT(e, tx, states)
+    ∧ ∀ t1, t2 ∈ DOMAIN e.txs: TxLess(e.txs[t1], e.txs[t2]) ⇒ t1 < t2
 
 ----------------------------------------------------
 \* Isolation Executions
 
-IsolationExecution(e, CommitTest(_, _)) ≜
+IsolationExecution(e, CommitTest(_, _, _)) ≜
     LET txs ≜ e.txs
         states ≜ ComputeStates(txs, ⟨e.init⟩, 1)
-    IN ∀idx ∈ DOMAIN txs: CommitTest(txs[idx], SubSeq(states, 1, idx))
+    IN ∀idx ∈ DOMAIN txs: CommitTest(e, txs[idx], SubSeq(states, 1, idx))
 
 SerializableExecution(e) ≜ IsolationExecution(e, SER_CT)
 SnapshotExecution(e) ≜ IsolationExecution(e, SI_CT)
 ReadCommittedExecution(e) ≜ IsolationExecution(e, RC_CT)
-ReadUnommittedExecution(e) ≜ IsolationExecution(e, RU_CT)
+ReadUncommittedExecution(e) ≜ IsolationExecution(e, RU_CT)
+StrictSerializableExecution(e) ≜ IsolationExecution(e, SSER_CT)
 
 ----------------------------------------------------
 \* Isolation Levels
 
-Isolation(init, transactions, CommitTest(_, _)) ≜
+Isolation(init, transactions, IE(_)) ≜
     \* all possible executions from transactions
-    ∃txs ∈ SetToSeqs(transactions):
-        IsolationExecution([ init ↦ init, txs ↦ txs ], CommitTest)
+    ∃txs ∈ SetToSeqs(transactions): IE([ init ↦ init, txs ↦ txs ])
 
-SerializableIsolation(init, transactions) ≜ Isolation(init, transactions, SER_CT)
-SnapshotIsolation(init, transactions) ≜ Isolation(init, transactions, SI_CT)
-ReadCommittedIsolation(init, transactions) ≜ Isolation(init, transactions, RC_CT)
-ReadUncommittedIsolation(init, transactions) ≜ Isolation(init, transactions, RU_CT)
+SerializableIsolation(init, transactions) ≜ Isolation(init, transactions, SerializableExecution)
+SnapshotIsolation(init, transactions) ≜ Isolation(init, transactions, SnapshotExecution)
+ReadCommittedIsolation(init, transactions) ≜ Isolation(init, transactions, ReadCommittedExecution)
+ReadUncommittedIsolation(init, transactions) ≜ Isolation(init, transactions, ReadUncommittedExecution)
+StrictSerializableIsolation(init, transactions) ≜ Isolation(init, transactions, StrictSerializableExecution)
 
 ================================================
