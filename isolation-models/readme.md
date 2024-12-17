@@ -35,7 +35,6 @@ ASSUME ¬ SI!SerializableIsolation(init, txs)
 ### TODO
 
 - Parallel Snapshot Isolation
-- Strict Serializability
 - Read Atomic
 
 ## ANSI
