@@ -4,14 +4,14 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
 
 ## Projects
 
-| Project                                         | Description                                                           |
-| ---                                             | ---                                                                   |
-| [paxos-eb0](paxos-eb0/)                         | A basic Paxos with excluded ballot 0 optimization                     |
-| [multi-paxos-eb0](multi-paxos-eb0/)             | A Multi-Paxos implement composed by [paxos-eb0](paxos-eb0/) instances |
-| [percolator](percolator/)                       | The Google's distributed transaction algorithm built on Bigtable      |
-| [sequencer](sequencer/)                         | A distributed sequence generator                                      |
-| [simplified-fast-paxos](simplified-fast-paxos/) | A simplified Fast Paxos implement                                     |
-| [isolation-models](isolation-models/)           | Transaction Isolation Models                                          |
+ | Project                                         | Description                                                                |
+ | ---                                             | ---                                                                        |
+ | [paxos-eb0](paxos-eb0/)                         | A basic Paxos with excluded ballot 0 optimization                          |
+ | [multi-paxos-eb0](multi-paxos-eb0/)             | A Multi-Paxos implementation composed by [paxos-eb0](paxos-eb0/) instances |
+ | [percolator](percolator/)                       | The Google's distributed transaction algorithm built on Bigtable           |
+ | [sequencer](sequencer/)                         | A distributed sequence generator                                           |
+ | [simplified-fast-paxos](simplified-fast-paxos/) | A simplified Fast Paxos implementation                                     |
+ | [isolation-models](isolation-models/)           | Transaction Isolation Models                                               |
 
 ## TODO
 

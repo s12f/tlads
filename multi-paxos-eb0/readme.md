@@ -4,10 +4,10 @@ you should read [paxos-eb0](../paxos-eb0) first.
 
 ## Motivation
 
-multi-paxos-eb0 is a Multi-Paxos implement composed by paxos-eb0 instances,
+multi-paxos-eb0 is a Multi-Paxos implementation composed by paxos-eb0 instances,
 for every paxos-eb0 instance,
 we always need an excluded proposer(leader) to commit a value in the fast path,
-multi-paxos-eb0 is not a stable/strong leader-based implement,
+multi-paxos-eb0 is not a stable/strong leader-based implementation,
 the Leader role only means it can vote directly in the next sequence.
 
 So a typical multi-paxos-eb0 history is:
@@ -28,7 +28,7 @@ Compare with [raft](https://raft.github.io/raft.pdf),
 multi-paxos-eb0 has higher availability,
 but without a steady/strong leader,
 so you can't guarantee the linearizable read from a single leader node,
-typical raft implement use lease read(read on leader is linearizable, but requires time synchronization).
+typical raft implementation use lease read(read on leader is linearizable, but requires time synchronization).
 
 So multi-paxos-eb0 is probably useful in distributed log/message storage systems(higher availability and read is typically sequential)
 or other systems that require higher availability but not frequent linearizable read.

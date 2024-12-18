@@ -5,7 +5,7 @@ You should read the [Fast Paxos](https://www.microsoft.com/en-us/research/wp-con
 ## Motivation
 
 Fast Paxos(and [Generalized Paxos](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr-2005-33.pdf))
-is a very important paper(s) that inspires many future leaderless(multi-leader) paxos implements.
+is a very important paper(s) that inspires many future leaderless(multi-leader) paxos implementations.
 
 This project simplifies the origin Fast Paxos to make it more easily and practically to implement:
 

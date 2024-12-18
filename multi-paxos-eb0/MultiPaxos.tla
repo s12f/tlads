@@ -90,7 +90,7 @@ LastCommittedSeq ≜ Max({ c.seq: c ∈ committed })
 LearnLastCommitted(p) ≜
     \* ∧ p.role = CANDIDATE
     ∧ committed ≠ {}
-    ∧ LastCommittedSeq >= p.nextSeq
+    ∧ LastCommittedSeq ≥ p.nextSeq
     ∧ proposerStates' = [ proposerStates EXCEPT ![p.id] = 
             [ id ↦ p.id, role ↦ CANDIDATE, lss ↦ p.lss, nextSeq ↦ LastCommittedSeq + 1 ] ]
     \* ∧ proposerStates' = [ proposerStates EXCEPT ![p.id].role = CANDIDATE ]
