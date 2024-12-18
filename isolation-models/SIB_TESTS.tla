@@ -12,6 +12,7 @@ SI ≜ INSTANCE SIB_ISOLATION
 
 ASSUME SI!SnapshotIsolation(init, txs)
 ASSUME ¬ SI!SerializableIsolation(init, txs)
+ASSUME ¬ SI!ParallelSnapshotIsolation(init, txs)
 
 \* StrictSerializableExecution Tests1
 \* failed_sser_init == [ k1 |-> 0, k2 |-> 0 ]

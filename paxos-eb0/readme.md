@@ -18,7 +18,7 @@ to commit a value:
 * Phase2: recover the voted value or issue a new value if not found any voted value.
 
 But in practice, two-round trip to commit a value is quite expensive,
-for an example, [raft](https://raft.github.io/raft.pdf) or some other multi-paxos implements,
+for an example, [raft](https://raft.github.io/raft.pdf) or some other multi-paxos implementations,
 in normal case, committing a value only need one-round trip.
 
 ## Paxos with excluded ballot 0 optimization
@@ -37,5 +37,5 @@ is a solution for that).
 So we can set the ballot 0 as the fast path(one-round trip),
 other ballots as recover path(two-round trip).
 Then based on this property,
-you can compose the basic paxos instances to build you efficient Multi-Paxos implements,
+you can compose the basic paxos instances to build you efficient Multi-Paxos implementations,
 [multi-paxos-eb0](../multi-paxos-eb0) is an example.

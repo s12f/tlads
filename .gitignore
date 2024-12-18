@@ -1,2 +1,4 @@
 .vim
 .vscode
+*.out
+states/
