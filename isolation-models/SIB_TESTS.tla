@@ -1,5 +1,7 @@
 --------------------- MODULE SIB_TESTS ------------------
 
+SI ≜ INSTANCE SIB_ISOLATION
+
 \* Write Skew
 init ≜ [ k1 ↦ 0, k2 ↦ 0, k3 ↦ 0 ]
 
@@ -8,11 +10,9 @@ txs ≜
     , [ tid ↦ "t2", read ↦ [ k2 ↦ 0 ], write ↦ [ k1 ↦ 1 ] ]
     }
 
-SI ≜ INSTANCE SIB_ISOLATION
-
+ASSUME SI!ParallelSnapshotIsolation(init, txs)
 ASSUME SI!SnapshotIsolation(init, txs)
 ASSUME ¬ SI!SerializableIsolation(init, txs)
-ASSUME ¬ SI!ParallelSnapshotIsolation(init, txs)
 
 \* StrictSerializableExecution Tests1
 \* failed_sser_init == [ k1 |-> 0, k2 |-> 0 ]
@@ -33,5 +33,15 @@ pr_txs ≜
 
 ASSUME SI!ReadCommittedIsolation(init, pr_txs)
 ASSUME ¬ SI!ReadAtomicIsolation(init, pr_txs)
+ASSUME ¬ SI!ParallelSnapshotIsolation(init, pr_txs)
+
+\* Write Conflict(Lost Update)
+wc_txs ≜
+    { [ tid ↦ "t1", read ↦ [k1 ↦ 0], write ↦ [k1 ↦ 1]]
+    , [ tid ↦ "t2", read ↦ [k1 ↦ 0], write ↦ [k1 ↦ 2]]
+    }
+
+ASSUME SI!ReadAtomicIsolation(init, wc_txs)
+ASSUME ¬ SI!ParallelSnapshotIsolation(init, wc_txs)
 
 ======================================================

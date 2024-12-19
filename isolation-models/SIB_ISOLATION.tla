@@ -110,28 +110,34 @@ SSER_CT(t, txs, states) ≜
 (* Parallel Snapshot Isolation Commit Test:
 *)
 
-TxPrecede(tx1, tx2) ≜ 
-    DOMAIN tx1.write ∩ (DOMAIN tx2.read ∪ DOMAIN tx2.write) ≠ {}
+TxPrecede(txs, states, t1, t2) ≜
+    LET sf(t, k) ≜ Min({ x ∈ 1 ‥ t : txs[t].read[k] = states[x][k] })
+    IN ∨ ∃k ∈ DOMAIN txs[t2].read: t1 = sf(t2, k) - 1
+       ∨ ∧ t1 < t2
+         ∧ DOMAIN txs[t1].write ∩ DOMAIN txs[t2].write ≠ {}
+
 \* ts: transaction set
-ComputeDirectPrecedeSet(txs, tx, pending) ≜ { t1 ∈ pending : TxPrecede(txs[t1], txs[tx]) }
+ComputeDirectPrecedeSet(txs, states, tx, pending) ≜
+    { t1 ∈ pending : TxPrecede(txs, states, t1, tx) }
+
 \* compute a precede set of some transactions
-RECURSIVE ComputePrecedeSet(_, _, _)
-ComputePrecedeSet(txs, pending, result) ≜
-    LET new ≜ UNION { ComputeDirectPrecedeSet(txs, tx, pending) : tx ∈ result } IN 
-    IF new = {}
-    THEN result
-    ELSE ComputePrecedeSet(txs, pending \ new, result ∪ new )
+RECURSIVE ComputePrecedeSet(_, _, _, _)
+ComputePrecedeSet(txs, states, pending, result) ≜
+    LET new ≜ UNION { ComputeDirectPrecedeSet(txs, states, tx, pending) : tx ∈ result }
+    IN IF new = {}
+       THEN result
+       ELSE ComputePrecedeSet(txs, states, pending \ new, result ∪ new )
 
 PSI_CT(t, txs, states) ≜
     ∧ RC_CT(t, txs, states)
     ∧ LET rs ≜ DOMAIN txs[t].read
-           ws ≜ DOMAIN txs[t].write
-           ps ≜ ComputePrecedeSet(txs, 1 ‥ t - 1, {t})
-           \* operation set
-           ops ≜ rs ∪ ws
-           slo(ok) ≜ Max({ x ∈ 1 ‥ t: ok ∉ rs ∨ txs[t].read[ok] = states[x][ok] })
+          ws ≜ DOMAIN txs[t].write
+          ps ≜ ComputePrecedeSet(txs, states, 1 ‥ t - 1, {t}) \ {t}
+          \* operation set
+          ops ≜ rs ∪ ws
+          slo(ok) ≜ Max({ x ∈ 1 ‥ t: ok ∉ rs ∨ txs[t].read[ok] = states[x][ok] })
        IN ∧ ∀ t1 ∈ ps, ok ∈ ops:
-            ok ∈ DOMAIN txs[t1].write ⇒ t1 + 1 ≤ slo(ok)
+                ok ∈ DOMAIN txs[t1].write ⇒ t1 + 1 ≤ slo(ok)
 
 (* Read Atomic Isolation Commit Test:
  Intuitively, if an operation o1 observes the writes of a transaction Ti ’s,

@@ -18,7 +18,7 @@ TxOps(h, idx, result) ≜
     ELSE LET op ≜ h[idx]
              tx ≜ op.tx
              entry ≜ [ op ↦ op, idx ↦ idx ]
-         IN IF tx ∉ DOAMIN result
+         IN IF tx ∉ DOMAIN result
             THEN TxOps(h, idx + 1, tx :> ⟨entry⟩ @@ result)
             ELSE TxOps(h, idx + 1, tx :> Append(result[tx], entry) @@ result)
 
