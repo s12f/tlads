@@ -25,4 +25,13 @@ failed_sser_txs ≜
 ASSUME SI!SerializableIsolation(init, failed_sser_txs)
 ASSUME ¬ SI!StrictSerializableIsolation(init, failed_sser_txs)
 
+\* Partial Read
+pr_txs ≜
+    { [ tid ↦ "t1", read ↦ ⟨⟩, write ↦ [k1 ↦ 1, k2 ↦ 1]]
+    , [ tid ↦ "t2", read ↦ [k1 ↦ 1, k2 ↦ 0], write ↦ ⟨⟩]
+    }
+
+ASSUME SI!ReadCommittedIsolation(init, pr_txs)
+ASSUME ¬ SI!ReadAtomicIsolation(init, pr_txs)
+
 ======================================================
