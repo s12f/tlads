@@ -19,6 +19,7 @@ SetToSeqs(S) ≜
 SeqToSet(S) ≜ { S[x] : x ∈ S}
 
 Max(S) ≜ CHOOSE x ∈ S: ∀ y ∈ S: x ≥ y
+Min(S) ≜ CHOOSE x ∈ S: ∀ y ∈ S: x ≤ y
 
 ----------------------------------------------------
 \* States
@@ -132,6 +133,22 @@ PSI_CT(t, txs, states) ≜
        IN ∧ ∀ t1 ∈ ps, ok ∈ ops:
             ok ∈ DOMAIN txs[t1].write ⇒ t1 + 1 ≤ slo(ok)
 
+(* Read Atomic Isolation Commit Test:
+ Intuitively, if an operation o1 observes the writes of a transaction Ti ’s,
+ all subsequent operations that read a key included in Ti ’s write set must
+ read from a state that includes Ti ’s effects.
+*)
+RA_CT(t, txs, states) ≜
+    ∧ RC_CT(t, txs, states)
+    ∧ LET read ≜ txs[t].read
+          sf(k) ≜ Min({ x ∈ 1 ‥ t : read[k] = states[x][k] })
+      IN ∀k1, k2 ∈ DOMAIN read:
+            LET sfr1 ≜ sf(k1)
+                sfr2 ≜ sf(k2)
+                tw_sfr1 ≜ IF sfr1 = 1 THEN {} ELSE DOMAIN txs[sfr1 - 1].write
+            IN k2 ∈ tw_sfr1 ⇒ sfr1 ≤ sfr2
+
+
 ----------------------------------------------------
 \* Isolation Executions
 
@@ -146,6 +163,7 @@ ReadCommittedExecution(e) ≜ IsolationExecution(e, RC_CT)
 ReadUncommittedExecution(e) ≜ IsolationExecution(e, RU_CT)
 ParallelSnapshotExecution(e) ≜ IsolationExecution(e, PSI_CT)
 StrictSerializableExecution(e) ≜ IsolationExecution(e, SSER_CT)
+ReadAtomicExecution(e) ≜ IsolationExecution(e, RA_CT)
 
 ----------------------------------------------------
 \* Isolation Levels
@@ -160,5 +178,6 @@ ReadCommittedIsolation(init, transactions) ≜ Isolation(init, transactions, Rea
 ReadUncommittedIsolation(init, transactions) ≜ Isolation(init, transactions, ReadUncommittedExecution)
 ParallelSnapshotIsolation(init, transactions) ≜ Isolation(init, transactions, ParallelSnapshotExecution)
 StrictSerializableIsolation(init, transactions) ≜ Isolation(init, transactions, StrictSerializableExecution)
+ReadAtomicIsolation(init, transactions) ≜ Isolation(init, transactions, ReadAtomicExecution)
 
 ================================================
