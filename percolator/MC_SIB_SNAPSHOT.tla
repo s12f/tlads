@@ -35,12 +35,11 @@ MapTx(tid, tx) ≜
 MappedTxs ≜ { MapTx(tx, txs[tx]) : tx ∈ DOMAIN txs }
 InitState ≜ [ k1 ↦ InitValue, k2 ↦ InitValue, k3 ↦InitValue ]
 
-AllTxsDone ≜ ∀tx ∈ Tx: txs[tx].status ∈ { "committed", "aborted" }
-
-SnapshotInv ≜ AllTxsDone ⇒
-    ∧ SI!SnapshotIsolation(InitState, MappedTxs)
-    ∧ SI!ReadCommittedIsolation(InitState, MappedTxs)
-    \* SerializableIsolation will fail, Because exists write skew executions
-    \* ∧ SI!SerializableIsolation(InitState, MappedTxs)
+SnapshotInv ≜
+    AllCommittedOrAborted ⇒
+        ∧ SI!SnapshotIsolation(InitState, MappedTxs)
+        ∧ SI!ReadCommittedIsolation(InitState, MappedTxs)
+        \* SerializableIsolation will fail, Because exists write skew executions
+        \* ∧ SI!SerializableIsolation(InitState, MappedTxs)
 
 ============================================================================

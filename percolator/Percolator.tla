@@ -12,6 +12,8 @@ VARIABLE next_ts
 VARIABLE rows
 VARIABLE txs
 
+all_vars ≜ ⟨next_ts, rows, txs⟩
+
 -----------------------------------------------------------------------------
 Max(s) ≜ CHOOSE x ∈ s: ∀y ∈ s: x ≥ y
 
@@ -165,8 +167,11 @@ Recover ≜ ∃k ∈ Key:
               ELSE ∃commit_ts ∈ cts: CommitKey(k, start_ts, commit_ts)
     ∧ UNCHANGED ⟨next_ts, txs⟩
 
+AllCommittedOrAborted ≜
+    ∀tx ∈ Tx: txs[tx].status ∈ { "committed", "aborted" }
+
 Done ≜
-    ∧ ∀tx ∈ Tx: txs[tx].status ∈ { "committed", "aborted" }
+    ∧ AllCommittedOrAborted
     ∧ UNCHANGED ⟨next_ts, rows, txs⟩
 
 -----------------------------------------------------------------------------
@@ -207,12 +212,10 @@ Next ≜
     ∨ Recover
     ∨ Done
 
-Spec ≜ Init ∧ □[Next]_⟨next_ts, rows, txs⟩
+Spec ≜ Init ∧ □[Next]_⟨all_vars⟩ ∧ WF_⟨all_vars⟩(Next)
 
-TypeOK ≜
-    ∧ next_ts ∈ Nat
-    ∧ ∀tx ∈ Tx: txs[tx].status ∈ TxStatus
+TypeOK ≜ ∀tx ∈ Tx: txs[tx].status ∈ TxStatus
 
-Inv ≜ TypeOK
+Liveness ≜ ◇(AllCommittedOrAborted)
 
 ============================================================================
