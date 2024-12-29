@@ -32,11 +32,6 @@ ASSUME SI!SnapshotIsolation(init, txs)
 ASSUME ¬ SI!SerializableIsolation(init, txs)
 ```
 
-### TODO
-
-- Parallel Snapshot Isolation
-- Read Atomic
-
 ## ANSI
 
 TODO.

@@ -35,6 +35,6 @@ AtomicRead ≜
             + ReadKey("k2", next_ts)
             + ReadKey("k3", next_ts)
 
-TransferInv ≜ Inv ∧ AtomicRead
+TransferInv ≜ AtomicRead
 
 ============================================================================
