@@ -35,10 +35,10 @@ or other systems that require higher availability but not frequent linearizable 
 
 ## Checking time
 
-  | Hardware | Ballot | Seq       | time       |
-  | _        | _      | _         | _          |
-  | 8 Cores  | {0, 1} | {0, 1}    | 1s         |
-  | 8 Cores  | {0, 1} | {0, 1, 2} | 13 min 21s |
+   | Hardware | Ballot | Seq       | time       |
+   | ---      | ---    | ---       | ---        |
+   | 8 Cores  | {0, 1} | {0, 1}    | 1s         |
+   | 8 Cores  | {0, 1} | {0, 1, 2} | 13 min 21s |
 
 ## TODO
 
