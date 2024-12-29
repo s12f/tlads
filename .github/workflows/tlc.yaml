@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         file:
-          - multi-paxos-eb0/MultiPaxos.tla
+          - multi-paxos-eb0/MC.tla
           - paxos-eb0/PaxosEb0.tla
           - percolator/Transfer.tla
           - percolator/SnapshotRead.tla

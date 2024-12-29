@@ -1,25 +1,29 @@
 -------------------------------- MODULE MultiPaxos -------------------------------
 EXTENDS Integers, TLC, FiniteSets
 
-CONSTANT Value, Acceptor, Quorum, Ballot, MaxSeq, Proposer, None
+CONSTANT Value, Acceptor, Quorum, Ballot, Seq, Proposer, None
 
 ASSUME QuorumAssumption ≜
     ∧ ∀ Q ∈ Quorum : Q ⊆ Acceptor
     ∧ ∀ Q1, Q2 ∈ Quorum : Q1 ∩ Q2 ≠ {} 
+
+VARIABLE msgs,
+         proposerStates,
+         acceptorStates,
+         committed
+
+vars ≜ ⟨msgs, proposerStates, acceptorStates, committed⟩
+
       
 LEADER ≜ "Leader"
 CANDIDATE ≜ "Candidate"
 
-Seq ≜ (0‥MaxSeq)
-
 Max(S) ≜ CHOOSE x ∈ S: ∀y ∈ S: x ≥ y
 QS ≜ Cardinality(Acceptor) ÷ 2 + 1
 
-\* lss: Last Success Sequence
 ProposerState ≜
     [ id: Proposer
     , role: { LEADER, CANDIDATE }
-    , lss: Seq ∪ { -1 }
     , nextSeq: Seq
     ]
 
@@ -54,31 +58,9 @@ Committed ≜
     , val: Value
     ]
 
-VARIABLE msgs,
-         proposerStates,
-         acceptorStates,
-         committed
-
-vars ≜ ⟨msgs, proposerStates, acceptorStates, committed⟩
-
-TypeOK ≜ 
-    ∧ msgs ⊆ Message
-    ∧ proposerStates ∈ [ Proposer → ProposerState ]
-    ∧ acceptorStates ∈ [ Acceptor → AcceptorState ]
-    ∧ committed ⊆ Committed
-          
-Constraint ≜
-    ∧ ∀p ∈ Proposer: proposerStates[p].lss < MaxSeq
-    ∧ ∀p ∈ Proposer: proposerStates[p].nextSeq < MaxSeq
-
-Symmetry ≜ Permutations(Acceptor)
-    ∪ Permutations(Proposer)
-    \* ∪ Permutations(Quorum)
-    ∪ Permutations(Value)
-
 Init ≜ ∧ msgs = {}
        ∧ proposerStates = [ p ∈ Proposer ↦ 
-            [ id ↦ p, role ↦ CANDIDATE, lss ↦ -1, nextSeq ↦ 0 ] ]
+            [ id ↦ p, role ↦ CANDIDATE, nextSeq ↦ 0 ] ]
        ∧ acceptorStates = [ a ∈ Acceptor ↦
             [ id ↦ a, seqs ↦  [ s ∈ Seq ↦ EmptySeqState] ] ]
        ∧ committed = {}
@@ -88,13 +70,10 @@ Send(m) ≜ msgs' = msgs ∪ {m}
 LastCommittedSeq ≜ Max({ c.seq: c ∈ committed })
 
 LearnLastCommitted(p) ≜
-    \* ∧ p.role = CANDIDATE
     ∧ committed ≠ {}
     ∧ LastCommittedSeq ≥ p.nextSeq
     ∧ proposerStates' = [ proposerStates EXCEPT ![p.id] = 
-            [ id ↦ p.id, role ↦ CANDIDATE, lss ↦ p.lss, nextSeq ↦ LastCommittedSeq + 1 ] ]
-    \* ∧ proposerStates' = [ proposerStates EXCEPT ![p.id].role = CANDIDATE ]
-        \* ^ p.nextSeq' = LastCommittedSeq
+            [ id ↦ p.id, role ↦ CANDIDATE, nextSeq ↦ LastCommittedSeq + 1 ] ]
     ∧ UNCHANGED ⟨msgs, acceptorStates, committed⟩
 
 Phase1a(p) ≜ ∃b ∈ Ballot:
@@ -132,7 +111,6 @@ Phase2a(p) ≜ ∃b ∈ Ballot:
 
 FastPhase2a(p) ≜ ∃v ∈ Value:
     ∧ p.role = LEADER
-    ∧ p.nextSeq = p.lss + 1
     ∧ ¬ ∃m ∈ msgs : m.type = "2a" ∧ m.pid = p.id ∧ m.seq = p.nextSeq ∧ m.bal = 0
     ∧ Send([type ↦ "2a", pid ↦ p.id, seq ↦ p.nextSeq, bal ↦ 0, val ↦ v, valSrc ↦ p.id])
     ∧ UNCHANGED ⟨committed, proposerStates, acceptorStates⟩
@@ -146,12 +124,6 @@ Phase2b(a) ≜ ∃ m ∈ msgs:
             val ↦ m.val, valSrc ↦ m.valSrc]) 
     ∧ UNCHANGED ⟨committed, proposerStates⟩
 
-\* votes ≜ [a ∈ Acceptor ↦  
-\*     {⟨m.seq, m.bal, m.val⟩ : m ∈ {mm ∈ msgs: ∧ mm.type = "2b"
-\*                                              ∧ mm.acc = a }}]
-\* 
-\* VotedFor(a, seq, b, v) ≜ ⟨seq, b, v⟩ ∈ votes[a]
-
 Commit(p) ≜ ∃b ∈ Ballot, v ∈ Value, valSrc ∈ Proposer:
     ∧ ∃Q ∈ Quorum: ∀a ∈ Q: ∃m ∈ msgs:
         ∧ m.type = "2b"
@@ -164,7 +136,7 @@ Commit(p) ≜ ∃b ∈ Ballot, v ∈ Value, valSrc ∈ Proposer:
     ∧ committed' = committed ∪ {[ seq ↦ p.nextSeq, pid ↦  p.id, val ↦ v]}
     ∧ LET newRole ≜ IF valSrc = p.id THEN LEADER ELSE CANDIDATE
         IN proposerStates' = [ proposerStates EXCEPT ![p.id] = 
-            [ id ↦ p.id, role ↦ newRole, lss ↦ p.nextSeq, nextSeq ↦ p.nextSeq + 1 ]]
+            [ id ↦ p.id, role ↦ newRole, nextSeq ↦ p.nextSeq + 1 ]]
     ∧ UNCHANGED ⟨msgs, acceptorStates⟩
 
 ProposerNext ≜ ∃pid ∈ Proposer: LET p ≜ proposerStates[pid] IN
@@ -185,7 +157,7 @@ Next ≜
 Spec ≜ Init ∧ □[Next]_vars
 ----------------------------------------------------------------------------
 
-Inv ≜ ∧ TypeOK
-      ∧ ∀c1, c2 ∈ committed:
-            c1.seq = c2.seq ⇒ c1.val = c2.val
+Inv ≜ 
+    ∀c1, c2 ∈ committed:
+        c1.seq = c2.seq ⇒ c1.val = c2.val
 ============================================================================
