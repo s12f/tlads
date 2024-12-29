@@ -35,13 +35,10 @@ or other systems that require higher availability but not frequent linearizable 
 
 ## Checking time
 
-Hardware:
-
-8Cores
-
-Ballot = {0, 1}, MaxSeq = 2 => 1s
-
-Ballot = {0, 1}, MaxSeq = 3 => 13min 21s
+  | Hardware | Ballot | Seq       | time       |
+  | _        | _      | _         | _          |
+  | 8 Cores  | {0, 1} | {0, 1}    | 1s         |
+  | 8 Cores  | {0, 1} | {0, 1, 2} | 13 min 21s |
 
 ## TODO
 

@@ -17,11 +17,11 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
 
 What's Next:
 
-- [X] Github CI
-- [ ] Separate model from specification
+- [X] GitHub CI
+- [x] Separate model from specification
 - [X] Modeling Transaction Isolation Levels
-- [x] Add Liveness Invariants
-- [ ] Distributed Transaction On Sql Databases
+- [x] Add Liveness Properties
+- [ ] Distributed Transaction On SQL Databases
 - [ ] HLC and Quorum Intersection
 
 ## Q & A
