@@ -170,8 +170,12 @@ Recover ≜ ∃k ∈ Key:
 AllCommittedOrAborted ≜
     ∀tx ∈ Tx: txs[tx].status ∈ { "committed", "aborted" }
 
+AllLocksCleaned ≜
+    ∀k ∈ Key: rows[k].lock = ⟨⟩
+
 Done ≜
     ∧ AllCommittedOrAborted
+    ∧ AllLocksCleaned
     ∧ UNCHANGED ⟨next_ts, rows, txs⟩
 
 -----------------------------------------------------------------------------
@@ -216,6 +220,6 @@ Spec ≜ Init ∧ □[Next]_⟨all_vars⟩ ∧ WF_⟨all_vars⟩(Next)
 
 TypeOK ≜ ∀tx ∈ Tx: txs[tx].status ∈ TxStatus
 
-Liveness ≜ ◇(AllCommittedOrAborted)
+Liveness ≜ ◇(AllCommittedOrAborted ∧ AllLocksCleaned)
 
 ============================================================================
