@@ -8,4 +8,5 @@ current Spanner probably has changed a lot.
 - [x] [TrueTime.tla](./TrueTime.tla): TrueTime APIs
 - [x] [DisjointLeases.tla](./DisjointLeases.tla): The implementation of Paxos leader election guarantees disjointness between leases.
 - [ ] Transaction
-
+    - [x] Read-Write
+    - [ ] Read-Only
