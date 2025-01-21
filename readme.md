@@ -13,17 +13,6 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
  | [simplified-fast-paxos](simplified-fast-paxos/) | A simplified Fast Paxos implementation                                     |
  | [isolation-models](isolation-models/)           | Transaction Isolation Models                                               |
 
-## TODO
-
-What's Next:
-
-- [X] GitHub CI
-- [x] Separate model from specification
-- [X] Modeling Transaction Isolation Levels
-- [x] Add Liveness Properties
-- [ ] Distributed Transaction On SQL Databases
-- [ ] HLC and Quorum Intersection
-
 ## Q & A
 
 #### Why are the TLA+ files unicode-based?

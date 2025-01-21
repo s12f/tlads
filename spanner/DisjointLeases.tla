@@ -4,10 +4,10 @@ EXTENDS Integers, TLC, FiniteSets
 
 --------------------------------------------------------
 \* import TrueTime Module
-CONSTANTS TTInitAbs, TTMaxAbs, TTInterval
-VARIABLES ttAbs, ttDrift
+CONSTANTS TTInitAbs, TTMaxSi, TTInterval
+VARIABLES ttAbs, ttDrift, ttSi
 INSTANCE TrueTime
-TTVars ≜ ⟨ttAbs, ttDrift⟩
+TTVars ≜ ⟨ttAbs, ttDrift, ttSi⟩
 
 --------------------------------------------------------
 CONSTANTS Replica, LeaderInterval
@@ -28,7 +28,7 @@ Vote(r) ≜
     ∧ msgs' = msgs ∪ {[ type ↦ "Vote"
                       , end ↦ TTNow.latest + LeaderInterval
                       , voter ↦ r ]}
-    ∧ UNCHANGED ⟨TTVars, intervals⟩
+    ∧ UNCHANGED ⟨intervals⟩
 
 HandleVote(r) ≜
     ∧ states[r].role = Backup
@@ -40,7 +40,7 @@ HandleVote(r) ≜
                           , end ↦ m.end
                           , voter ↦  m.voter
                           , acceptor ↦ r ]}
-    ∧ UNCHANGED ⟨TTVars, intervals⟩
+    ∧ UNCHANGED ⟨intervals⟩
 
 BecomeLeader(r) ≜
     ∧ states[r].role = Backup
@@ -54,13 +54,13 @@ BecomeLeader(r) ≜
         ∧ intervals' = intervals ∪ {[ leader ↦ r
                                     , start ↦ m.end - LeaderInterval
                                     , end ↦ m.end ]}
-    ∧ UNCHANGED ⟨TTVars, msgs⟩
+    ∧ UNCHANGED ⟨msgs⟩
 
 BecomeBackup(r) ≜
     ∧ states[r].role = Leader
     ∧ TTAfter(states[r].end)
     ∧ states' = [ states EXCEPT ![r].role = Backup ]
-    ∧ UNCHANGED ⟨TTVars, msgs, intervals⟩
+    ∧ UNCHANGED ⟨msgs, intervals⟩
 
 Init ≜
     ∧ TTInit
@@ -76,13 +76,14 @@ Init ≜
 Next ≜
     ∨ ∧ TTNext
       ∧ UNCHANGED ⟨states, msgs, intervals⟩
-    ∨ ∃r ∈ Replica:
-        ∨ Vote(r)
-        ∨ HandleVote(r)
-        ∨ BecomeLeader(r)
-        ∨ BecomeBackup(r)
+    ∨ ∧ ∃r ∈ Replica:
+            ∨ Vote(r)
+            ∨ HandleVote(r)
+            ∨ BecomeLeader(r)
+            ∨ BecomeBackup(r)
+      ∧ UNCHANGED ⟨TTVars⟩
 
-Spec ≜ Init ∧ □[Next]_⟨TTVars, states, msgs, intervals⟩ ∧ SF_⟨ttAbs⟩(TTNextAbs)
+Spec ≜ Init ∧ □[Next]_⟨TTVars, states, msgs, intervals⟩
 
 --------------------------------------------------------
 
