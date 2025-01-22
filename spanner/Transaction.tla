@@ -33,12 +33,14 @@ VARIABLES txs
 (* ps: Participants,
     every participant contains only a single key instead of a key range,
     So participant name is the key name.
+
     We abstract participant as a lineariable transactional KV Store,
-    which can be implemented:
-        1. read only happends on Leader
+    which can be implemented by:
+        1. reading only happends on Leader
         2. Leader always apply replicated logs before returning
         3. make sure the lineariable points are always valid
-    So TSafe doesn't need to check TPaxosSafe mentioned in paper.
+    So TPaxosSafe(paxosTs) always same as latest prepared timestamp,
+    and TSafe only need to check paxosTs in RO transactions.
 *)
 VARIABLES ps
 
