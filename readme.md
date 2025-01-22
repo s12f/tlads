@@ -12,7 +12,7 @@ Verify some old or new concepts/models/algorithms/ideas of distributed/discrete 
   | [sequencer](sequencer/)                         | A distributed sequence generator                                           |
   | [simplified-fast-paxos](simplified-fast-paxos/) | A simplified Fast Paxos implementation                                     |
   | [isolation-models](isolation-models/)           | Transaction Isolation Models                                               |
-  | [spanner](isolation-models/)                    | Spanner: Google’s Globally-Distributed Database                            |
+  | [spanner](spanner/)                    | Spanner: Google’s Globally-Distributed Database                            |
 
 ## Q & A
 

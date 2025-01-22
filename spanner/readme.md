@@ -10,5 +10,5 @@ current Spanner probably has changed a lot.
 - [x] [Transaction.tla](./Transaction.tla): The transaction implementation, included:
     - [x] Read-Write
     - [x] Read-Only
-- [TxTest.tla](./TxTest.tla): Models and Tests
+- [x] [TxTest.tla](./TxTest.tla): Models and Tests
 - [ ] Liveness Properties
