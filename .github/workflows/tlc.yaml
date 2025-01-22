@@ -30,7 +30,7 @@ jobs:
           - simplified-fast-paxos/SimplifiedFastPaxos.tla
           - isolation-models/ALL_TESTS.tla
           - spanner/DisjointLeases.tla
-          - spanner/RwTest.tla
+          - spanner/TxTest.tla
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
