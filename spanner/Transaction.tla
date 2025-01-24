@@ -39,8 +39,6 @@ VARIABLES txs
         1. reading only happends on Leader
         2. Leader always apply replicated logs before returning
         3. make sure the lineariable points are always valid
-    So TPaxosSafe(paxosTs) always same as latest prepared timestamp,
-    and TSafe only need to check paxosTs in RO transactions.
 *)
 VARIABLES ps
 
@@ -100,11 +98,12 @@ Prepare(tx, key) ≜
     ∧ key ∈ DOMAIN txs[tx].rw.write
     ∧ ps[key].lock = None ∨ ps[key].lock = tx
     ∧ ps[key].prepared = None
-    ∧ ps' = [ ps EXCEPT ![key].lock = tx,
-                        ![key].paxosTs = @ + 1,
-                        ![key].prepared = [ ts ↦ ps[key].paxosTs
-                                          , value ↦ txs[tx].rw.write[key] ]
-            ]
+    ∧ LET ts ≜ Max({ps[key].lastTs, TTNow.latest})
+      IN ps' = [ ps EXCEPT ![key].lock = tx,
+                           ![key].lastTs = ts,
+                           ![key].prepared = [ ts ↦ ts
+                                             , value ↦ txs[tx].rw.write[key] ]
+               ]
     ∧ UNCHANGED ⟨txs⟩
 
 (* Require write lock, and write commit log,
@@ -123,16 +122,16 @@ PrepareCoLeader(tx, key) ≜
         ∧ ps[p].prepared ≠ None
     ∧ LET nonLeaderPs ≜ DOMAIN txs[tx].rw.write \ { key }
           maxPreparedTs ≜ IF nonLeaderPs = {}
-                          THEN txs[tx].startCommitTs + 1
+                          THEN -1
                           ELSE Max({ ps[x].prepared.ts : x ∈ nonLeaderPs })
           commitTs ≜ Max({ maxPreparedTs
                          , txs[tx].startCommitTs + 1
-                         , ps[key].paxosTs
+                         , ps[key].lastTs
                          , TTNow.earliest
                          })
       IN ∧ ps' = [ ps EXCEPT ![key].lock = tx,
-                             ![key].paxosTs = @ + 1,
-                             ![key].prepared = [ ts ↦ ps[key].paxosTs
+                             ![key].lastTs = commitTs,
+                             ![key].prepared = [ ts ↦ commitTs
                                                , value ↦ txs[tx].rw.write[key] ]
                  ]
          ∧ txs' = [ txs EXCEPT
@@ -164,15 +163,25 @@ CleanCommitted(tx, key) ≜
     ∧ txs[tx].status = "Committed"
     ∧ ps[key].lock = tx
     ∧ IF ps[key].prepared = None
-      THEN ps' = [ ps EXCEPT ![key].lock = None ]
+      THEN ps' = [ ps EXCEPT
+                    ![key].lock = None,
+                    ![key].lastTs = txs[tx].commitTs
+                 ]
       ELSE ps' = [ ps EXCEPT
                     ![key].lock = None,
+                    ![key].lastTs = txs[tx].commitTs,
                     ![key].prepared = None,
                     ![key].data = Append(@, [ ts ↦  txs[tx].commitTs
                                             , value ↦ ps[key].prepared.value] ) ]
     ∧ UNCHANGED ⟨txs⟩
 
-CheckTSafe(key, ts) ≜ ts < ps[key].paxosTs
+(* In the assumption that participant is a lineariable KV-Store,
+    TPaxosSafe is always ∞, so TSafe is actually same as TTMSafe.
+*)
+CheckTSafe(key, ts) ≜
+    IF ps[key].prepared = None
+    THEN TTAfter(ts)
+    ELSE ts < ps[key].prepared.ts
 
 ReadValue(key, ts) ≜
     LET data ≜ ps[key].data
@@ -208,7 +217,6 @@ TxInit(tx, rw) ≜
     , coLeader ↦ SafeChoose(DOMAIN rw.write)
     , rw ↦ rw
     , read ↦ ⟨⟩
-    \* , readTs ↦ None
     , startCommitTs↦ None
     , commitTs ↦ None
     ]
@@ -224,7 +232,7 @@ Init ≜
                     constraint here by simply assuming S_max will be big enough,
                     because it is a implemetation detail in paxos replication layer.
                 *)
-                , paxosTs ↦ TTNow.earliest 
+                , lastTs ↦ TTNow.earliest
                 ] ]
 
 
