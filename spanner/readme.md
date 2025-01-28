@@ -14,5 +14,4 @@ current Spanner probably has changed a lot.
 - [x] Liveness Properties:
     - All transactions will eventually be committed or aborted.
     - All related locks will eventually be cleaned.
-    - Note: verify liveness properties is more expensive (05min 19s with 8 workers) than safety,
-          so the PROPERTIES in [TxTest.cfg](./TxTest.cfg) is commented by default.
+    - Note: verify liveness properties is more expensive (05min 19s with 8 workers) than safety, so the PROPERTIES in [TxTest.cfg](./TxTest.cfg) is commented by default.
