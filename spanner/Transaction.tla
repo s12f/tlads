@@ -145,10 +145,17 @@ Commit(tx) ≜
     ∧ txs' = [ txs EXCEPT ![tx].status = "Committed" ]
     ∧ UNCHANGED ⟨ps⟩
 
-TTAdvanceForCommitWait ≜ ∃tx ∈ DOMAIN txs:
-    ∧ txs[tx].status = "CommitWaiting"
-    ∧ ¬ TTAfter(txs[tx].commitTs)
-    ∧ TTEventNext
+TTAdvanceForTxLiveness ≜ ∃tx ∈ DOMAIN txs:
+    \* read-only transaction
+    ∨ ∧ txs[tx].status = "Reading"
+      ∧ txs[tx].rw.write = ⟨⟩
+      ∧ txs[tx].startCommitTs ≠ None
+      ∧ ¬ TTAfter(txs[tx].startCommitTs)
+      ∧ TTEventNext
+    \* read-write Transaction
+    ∨ ∧ txs[tx].status = "CommitWaiting"
+      ∧ ¬ TTAfter(txs[tx].commitTs)
+      ∧ TTEventNext
 
 \* Clean
 CleanAborted(tx, key) ≜
@@ -239,8 +246,10 @@ Init ≜
 TxNext ≜
     ∃tx ∈ DOMAIN txs:
         IF txs[tx].rw.write = ⟨⟩
+        \* Read-Only
         THEN ∨ RoTxStart(tx)
              ∨ RoTxRead(tx)
+        \* Read-Write
         ELSE ∨ StartCommit(tx)
              ∨ Commit(tx)
              ∨ ∃key ∈ Key:
@@ -256,10 +265,10 @@ Done ≜
     ∧ ∀key ∈ Key: ps[key].lock = None
 
 Next ≜
-    ∨ ∧ TTAdvanceForCommitWait
-      ∧ UNCHANGED ⟨txs, ps⟩
     ∨ ∧ TxNext
       ∧ UNCHANGED ⟨ttAbs, ttDrift, ttSi⟩
+    ∨ ∧ TTAdvanceForTxLiveness
+      ∧ UNCHANGED ⟨txs, ps⟩
     ∨ ∧ TTNext
       ∧ UNCHANGED ⟨txs, ps⟩
 

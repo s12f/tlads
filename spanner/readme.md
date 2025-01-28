@@ -11,4 +11,8 @@ current Spanner probably has changed a lot.
     - [x] Read-Write
     - [x] Read-Only
 - [x] [TxTest.tla](./TxTest.tla): Models and Tests
-- [ ] Liveness Properties
+- [x] Liveness Properties:
+    - All transactions will eventually be committed or aborted.
+    - All related locks will eventually be cleaned.
+    - Note: verify liveness properties is more expensive (05min 19s with 8 workers) than safety,
+          so the PROPERTIES in [TxTest.cfg](./TxTest.cfg) is commented by default.
