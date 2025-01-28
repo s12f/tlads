@@ -32,7 +32,7 @@ TxDefs ≜
 INSTANCE Transaction
 
 Fairness ≜
-    ∧ SF_⟨txs, ps⟩(TxNext)
+    ∧ WF_⟨txs, ps⟩(TxNext)
     ∧ SF_⟨ttAbs⟩(TTAdvanceForTxLiveness)
     ∧ WF_⟨ttSi, ttAbs, ttDrift⟩(TTNext)
 
