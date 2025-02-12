@@ -52,6 +52,14 @@ SafeChoose(s) ≜
     ELSE CHOOSE x ∈ s: TRUE
 
 ------------------------------------------------------------
+(*
+Reading: the transaction started, is requiring read lock and reading data.
+Committing: the transaction have read and written data, starts committing.
+CommitWaiting: the transaction archived the commit point, but needs to wait
+    until TTAfter(commitTs).
+Committed: the transaction is committed safely.
+Aborted: the transaction is aborted.
+ *)
 Status ≜ {"Reading", "Committing", "CommitWaiting", "Committed", "Aborted"}
 
 ReadLatestValue(key) ≜
@@ -127,7 +135,6 @@ PrepareCoLeader(tx, key) ≜
           commitTs ≜ Max({ maxPreparedTs
                          , txs[tx].startCommitTs + 1
                          , ps[key].lastTs
-                         , TTNow.earliest
                          })
       IN ∧ ps' = [ ps EXCEPT ![key].lock = tx,
                              ![key].lastTs = commitTs,
@@ -182,12 +189,13 @@ CleanCommitted(tx, key) ≜
                                             , value ↦ ps[key].prepared.value] ) ]
     ∧ UNCHANGED ⟨txs⟩
 
-(* In the assumption that participant is a lineariable KV-Store,
-    TPaxosSafe is always ∞, so TSafe is actually same as TTMSafe.
-*)
 CheckTSafe(key, ts) ≜
     IF ps[key].prepared = None
-    THEN TTAfter(ts)
+    THEN ts ≤ Max({TTNow.earliest, ps[key].lastTs})
+    (* since we re-use the prepared filed in the coordinator leader,
+        the ps[key].prepared.ts could be the commit timestamp,
+        so ts is not valid if it equals the prepared timestamp.
+    *)
     ELSE ts < ps[key].prepared.ts
 
 ReadValue(key, ts) ≜
@@ -218,10 +226,12 @@ RoTxRead(tx) ≜
              ]
     ∧ UNCHANGED ⟨ps⟩
 
+(* tx: transaction name/id
+   rw: the definition of tx
+ *)
 TxInit(tx, rw) ≜
     [ status ↦  "Reading"
-    \* Coordinator Leader(Participant)
-    , coLeader ↦ SafeChoose(DOMAIN rw.write)
+    , coLeader ↦ SafeChoose(DOMAIN rw.write) \* Coordinator Leader(Participant)
     , rw ↦ rw
     , read ↦ ⟨⟩
     , startCommitTs↦ None

@@ -48,7 +48,7 @@ HandleRequest(s) ≜
  This is the most important point of the algorithm,
  the Server will always put request into inbox first(HandleRequest Action),
  then check whether itself still has a valid lease(The Linearizable Point),
- If it is, the sequence in the inbox can send to client safely.
+ If it does, the sequence in the inbox can send to client safely.
  *)
 CheckRole(s) ≜
     ∧ states[s].role = Leader

@@ -2,11 +2,22 @@
 
 EXTENDS Integers
 
-CONSTANT TTInitAbs, TTMaxSi, TTInterval
+\* Initial absolute time
+CONSTANT TTInitAbs
+\* Max self-incresed limitation
+CONSTANT TTMaxSi
+\* Interval of TrueTime
+CONSTANT TTInterval
 
+\* make sure timestamp is not negative
 ASSUME TTInitAbs - TTInterval >= 0
 
-VARIABLES ttAbs, ttDrift, ttSi
+\* absolute time
+VARIABLES ttAbs
+\* the drift compared with the absolute time
+VARIABLES ttDrift
+\* self-incresed counter
+VARIABLES ttSi
 
 TTInit ≜
     ∧ ttAbs = TTInitAbs

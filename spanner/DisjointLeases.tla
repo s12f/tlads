@@ -44,7 +44,7 @@ HandleVote(r) ≜
 
 BecomeLeader(r) ≜
     ∧ states[r].role = Backup
-    ∧ ¬ TTAfter(states[r].end)
+    \* ∧ ¬ TTAfter(states[r].end)
     ∧ ∃Q ∈ Quorum: ∀a ∈ Q: ∃m ∈ msgs:
         ∧ m.type = "Grant"
         ∧ m.voter = r
