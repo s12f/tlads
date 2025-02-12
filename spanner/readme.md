@@ -15,3 +15,5 @@ current Spanner probably has changed a lot.
     - All transactions will eventually be committed or aborted.
     - All related locks will eventually be cleaned.
     - Note: verify liveness properties is more expensive (05min 19s with 8 workers) than safety, so the PROPERTIES in [TxTest.cfg](./TxTest.cfg) is commented by default.
+
+More details: [Implement and Verify Google Spanner in TLA+](https://s12f.github.io/posts/2025-02-08-spanner-tlaplus.html)
