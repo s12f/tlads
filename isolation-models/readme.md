@@ -8,14 +8,18 @@ There are different isolation models to specify the database transaction isolati
     + [Weak Consistency: A Generalized Theory and Optimistic Implementations for Distributed Transactions](https://pmg.csail.mit.edu/papers/adya-phd.pdf)
 + SIB: [Seeing is Believing: A Client-Centric Specification of Database Isolation](https://www.cs.cornell.edu/lorenzo/papers/Crooks17Seeing.pdf)
 
+Since SIB is the cleaner and easier to understand, implement and use to verify isolation levels of applications
+(e.g. [percolator](../percolator), [spanner](../spanner)) compared with ANSI and ADYA,
+so this project only implement the SIB model currently.
+
 ## SIB
 
 [SIB_ISOLATION.tla](./SIB_ISOLATION.tla) is the specification of SIB isolation
-model, you can use the IsolationExecution-related(e.g. SerializableExecution)
-operations to verify a transaction execution(included an init state and a
-transaction sequence), or use the Isolation-related operations(e.g.
-SerializableIsolation) to verify an init state and a set of finished
-transaction(committed or abort), there is an example to verify that the
+model. You can use the IsolationExecution-related(e.g. SerializableExecution)
+operations to verify a transaction execution(included an `init` state and a
+transaction sequence). Or use the Isolation-related operations(e.g.
+SerializableIsolation) to verify an `init` state and a set of finished
+transaction(committed or abort). There is an example to verify that the
 Snapshot Isolation allows the Write Skew anomaly, but the Serializable
 Isolation Doesn't:
 ```tla
@@ -32,10 +36,4 @@ ASSUME SI!SnapshotIsolation(init, txs)
 ASSUME ¬ SI!SerializableIsolation(init, txs)
 ```
 
-## ANSI
-
-TODO.
-
-## ADYA
-
-TODO.
+More examples please see [SIB_TESTS.tla](./SIB_TESTS.tla).
