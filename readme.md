@@ -29,4 +29,4 @@ TLA+ files for readability, there are some disadvantages:
 
 #### How do I input the Unicode symbols?
 
-Please read: https://github.com/tlaplus/tlaplus-standard/tree/main/unicode
+Please read: https://github.com/tlaplus/rfcs/tree/2a772d9dd11acec5d7dedf30abfab91a49de48b8/accepted_rfcs/rfc5_unicode
